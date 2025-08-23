@@ -37,6 +37,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Static files
+app.use(express.static('public'));
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
