@@ -248,6 +248,7 @@
             <!-- API Test Tab -->
             <div id="api-tab" class="tab-content">
                 <h2>Test LLM API</h2>
+                <button onclick="testConnection()" style="width: auto; margin-bottom: 15px;">🔍 Test API Connection</button>
                 <div class="two-column">
                     <div class="form-group">
                         <label for="provider">Provider</label>
@@ -367,32 +368,45 @@
             btn.disabled = true;
             btn.textContent = 'Creating Account...';
 
+            const email = document.getElementById('reg-email').value;
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+
             try {
+                console.log('Registering user:', { email, username });
+                
                 const response = await fetch(`${API_BASE}/auth/register`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('reg-email').value,
-                        username: document.getElementById('reg-username').value,
-                        password: document.getElementById('reg-password').value
-                    })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, username, password })
                 });
 
+                console.log('Response status:', response.status);
                 const data = await response.json();
+                console.log('Response data:', data);
                 
                 if (response.ok) {
                     currentToken = data.token;
                     currentUser = data.user;
                     localStorage.setItem('jwt_token', currentToken);
                     localStorage.setItem('user_data', JSON.stringify(currentUser));
-                    showResult('register-result', 'Account created successfully!', true);
+                    
+                    showResult('register-result', `✅ Account created successfully!\n\nWelcome ${data.user.username}!\nEmail: ${data.user.email}\nPlan: ${data.user.subscription.plan}\nToken expires: ${new Date(Date.now() + 24*60*60*1000).toLocaleDateString()}`, true);
                     showUserInfo();
-                    setTimeout(() => showTab('api'), 2000);
+                    
+                    // Clear form
+                    document.getElementById('reg-email').value = '';
+                    document.getElementById('reg-username').value = '';
+                    document.getElementById('reg-password').value = '';
                 } else {
-                    showResult('register-result', data.error || 'Registration failed', false);
+                    showResult('register-result', `❌ Registration failed:\n${data.error || data.message || 'Unknown error'}`, false);
                 }
             } catch (error) {
-                showResult('register-result', 'Network error: ' + error.message, false);
+                console.error('Registration error:', error);
+                showResult('register-result', `❌ Network error:\n${error.message}\n\nPlease check:\n- Internet connection\n- API server status\n- CORS configuration`, false);
             }
 
             btn.disabled = false;
@@ -405,31 +419,45 @@
             btn.disabled = true;
             btn.textContent = 'Signing In...';
 
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
             try {
+                console.log('Logging in user:', email);
+                
                 const response = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('login-email').value,
-                        password: document.getElementById('login-password').value
-                    })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
                 });
 
+                console.log('Login response status:', response.status);
                 const data = await response.json();
+                console.log('Login response data:', data);
                 
                 if (response.ok) {
                     currentToken = data.token;
                     currentUser = data.user;
                     localStorage.setItem('jwt_token', currentToken);
                     localStorage.setItem('user_data', JSON.stringify(currentUser));
-                    showResult('login-result', 'Login successful!', true);
+                    
+                    showResult('login-result', `✅ Welcome back ${data.user.username}!\n\nPlan: ${data.user.subscription.plan}\nUsage: ${data.user.subscription.usage.requests.current}/${data.user.subscription.usage.requests.limit} requests`, true);
                     showUserInfo();
+                    
+                    // Clear form
+                    document.getElementById('login-email').value = '';
+                    document.getElementById('login-password').value = '';
+                    
                     setTimeout(() => showTab('api'), 2000);
                 } else {
-                    showResult('login-result', data.error || 'Login failed', false);
+                    showResult('login-result', `❌ Login failed:\n${data.error || data.message || 'Invalid credentials'}`, false);
                 }
             } catch (error) {
-                showResult('login-result', 'Network error: ' + error.message, false);
+                console.error('Login error:', error);
+                showResult('login-result', `❌ Network error:\n${error.message}`, false);
             }
 
             btn.disabled = false;
@@ -457,7 +485,8 @@
 
         async function testAPI() {
             if (!currentToken) {
-                showResult('api-result', 'Please login first', false);
+                showResult('api-result', '❌ Please login first to use the API', false);
+                showTab('login');
                 return;
             }
 
@@ -465,26 +494,51 @@
             btn.disabled = true;
             btn.textContent = 'Sending Request...';
 
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt.trim()) {
+                showResult('api-result', '❌ Please enter a prompt', false);
+                btn.disabled = false;
+                btn.textContent = 'Send Request';
+                return;
+            }
+
+            const requestData = {
+                provider: document.getElementById('provider').value,
+                model: document.getElementById('model').value,
+                prompt: prompt,
+                max_tokens: parseInt(document.getElementById('max-tokens').value),
+                temperature: parseFloat(document.getElementById('temperature').value)
+            };
+
             try {
+                console.log('Testing API with:', requestData);
+                console.log('Using token:', currentToken.substring(0, 20) + '...');
+                
                 const response = await fetch(`${API_BASE}/api`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'Authorization': `Bearer ${currentToken}`
                     },
-                    body: JSON.stringify({
-                        provider: document.getElementById('provider').value,
-                        model: document.getElementById('model').value,
-                        prompt: document.getElementById('prompt').value,
-                        max_tokens: parseInt(document.getElementById('max-tokens').value),
-                        temperature: parseFloat(document.getElementById('temperature').value)
-                    })
+                    body: JSON.stringify(requestData)
                 });
 
+                console.log('API response status:', response.status);
                 const data = await response.json();
-                showResult('api-result', data, response.ok);
+                console.log('API response data:', data);
+
+                if (response.ok) {
+                    showResult('api-result', `✅ API Request Successful!\n\n${JSON.stringify(data, null, 2)}`, true);
+                } else if (response.status === 401) {
+                    showResult('api-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
+                    logout();
+                } else {
+                    showResult('api-result', `❌ API Request Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
+                }
             } catch (error) {
-                showResult('api-result', 'Network error: ' + error.message, false);
+                console.error('API test error:', error);
+                showResult('api-result', `❌ Network error:\n${error.message}`, false);
             }
 
             btn.disabled = false;
@@ -493,25 +547,73 @@
 
         async function getSubscription() {
             if (!currentToken) {
-                showResult('subscription-result', 'Please login first', false);
+                showResult('subscription-result', '❌ Please login first to view subscription', false);
+                showTab('login');
                 return;
             }
 
             try {
+                console.log('Getting subscription status...');
+                
                 const response = await fetch(`${API_BASE}/subscription/status`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                    headers: { 
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Accept': 'application/json'
+                    }
                 });
 
+                console.log('Subscription response status:', response.status);
                 const data = await response.json();
-                showResult('subscription-result', data, response.ok);
-                
-                if (response.ok && data.data) {
-                    currentUser.subscription = data.data;
-                    localStorage.setItem('user_data', JSON.stringify(currentUser));
-                    showUserInfo();
+                console.log('Subscription response data:', data);
+
+                if (response.ok) {
+                    showResult('subscription-result', `✅ Subscription Status:\n\n${JSON.stringify(data, null, 2)}`, true);
+                    
+                    if (data.data) {
+                        currentUser.subscription = data.data;
+                        localStorage.setItem('user_data', JSON.stringify(currentUser));
+                        showUserInfo();
+                    }
+                } else if (response.status === 401) {
+                    showResult('subscription-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
+                    logout();
+                } else {
+                    showResult('subscription-result', `❌ Failed to get subscription (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
                 }
             } catch (error) {
-                showResult('subscription-result', 'Network error: ' + error.message, false);
+                console.error('Subscription error:', error);
+                showResult('subscription-result', `❌ Network error:\n${error.message}`, false);
+            }
+        }
+
+        async function testConnection() {
+            if (!currentToken) {
+                showResult('api-result', '❌ Please login first', false);
+                return;
+            }
+
+            try {
+                console.log('Testing API connection...');
+                
+                const response = await fetch(`${API_BASE}/api/providers`, {
+                    headers: { 
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('Connection test response status:', response.status);
+                const data = await response.json();
+                console.log('Connection test response data:', data);
+
+                if (response.ok) {
+                    showResult('api-result', `✅ API Connection Successful!\n\nAvailable providers: ${data.data.join(', ')}\nToken is valid: ✅\nServer is responding: ✅`, true);
+                } else {
+                    showResult('api-result', `❌ API Connection Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
+                }
+            } catch (error) {
+                console.error('Connection test error:', error);
+                showResult('api-result', `❌ Connection test failed:\n${error.message}`, false);
             }
         }
 

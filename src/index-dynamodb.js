@@ -27,7 +27,12 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: true, // Allow all origins for now
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Rate limiting
 const limiter = rateLimit({
