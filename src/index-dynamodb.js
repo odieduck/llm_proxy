@@ -25,8 +25,18 @@ const PORT = process.env.PORT || 3000;
   }
 })();
 
-// Security middleware
-app.use(helmet());
+// Security middleware with relaxed CSP for our web interface
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
 app.use(cors({
   origin: true, // Allow all origins for now
   credentials: true,

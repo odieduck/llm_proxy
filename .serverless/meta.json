@@ -1,0 +1,106 @@
+{
+  "/Users/haiyang/workspace/llm_proxy/serverless.yml": {
+    "versionFramework": "4.18.1",
+    "servicePath": "/Users/haiyang/workspace/llm_proxy/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "llm-proxy-service",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "us-east-1",
+        "environment": {
+          "NODE_ENV": "production",
+          "AWS_REGION": "us-east-1",
+          "DYNAMODB_USERS_TABLE": "llm-proxy-users",
+          "DYNAMODB_SESSIONS_TABLE": "llm-proxy-sessions",
+          "DYNAMODB_USAGE_TABLE": "llm-proxy-usage",
+          "JWT_SECRET": "<REDACTED>"
+        },
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "dynamodb:Query",
+              "dynamodb:Scan",
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem"
+            ],
+            "Resource": [
+              "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/llm-proxy-*"
+            ]
+          }
+        ]
+      },
+      "functions": {
+        "api": {
+          "handler": "src/lambda.handler",
+          "events": [
+            {
+              "http": {
+                "path": "/",
+                "method": "ANY",
+                "cors": true
+              }
+            },
+            {
+              "http": {
+                "path": "/{proxy+}",
+                "method": "ANY",
+                "cors": true
+              }
+            }
+          ]
+        }
+      },
+      "plugins": [
+        "serverless-offline"
+      ]
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "environment": {
+        "NODE_ENV": "production",
+        "AWS_REGION": "us-east-1",
+        "DYNAMODB_USERS_TABLE": "llm-proxy-users",
+        "DYNAMODB_SESSIONS_TABLE": "llm-proxy-sessions",
+        "DYNAMODB_USAGE_TABLE": "llm-proxy-usage",
+        "JWT_SECRET": "<REDACTED>"
+      },
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem"
+          ],
+          "Resource": [
+            "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/llm-proxy-*"
+          ]
+        }
+      ]
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:806:10899)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Authentication.authenticate (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:808:22245)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:812:2379)\n    at async TraditionalRunner.run (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:1428:27914)\n    at async route (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:1603:2878)\n    at async Object.run (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:1604:3661)\n    at async run2 (file:///Users/haiyang/.serverless/releases/4.18.1/package/dist/sf-core.js:1604:4815)"
+    },
+    "serviceRawFile": "service: llm-proxy-service\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: us-east-1\n  environment:\n    NODE_ENV: production\n    AWS_REGION: us-east-1\n    DYNAMODB_USERS_TABLE: llm-proxy-users\n    DYNAMODB_SESSIONS_TABLE: llm-proxy-sessions\n    DYNAMODB_USAGE_TABLE: llm-proxy-usage\n    JWT_SECRET: your-production-jwt-secret-change-this-to-something-secure\n  iamRoleStatements:\n    - Effect: Allow\n      Action:\n        - dynamodb:Query\n        - dynamodb:Scan\n        - dynamodb:GetItem\n        - dynamodb:PutItem\n        - dynamodb:UpdateItem\n        - dynamodb:DeleteItem\n      Resource: \n        - \"arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/llm-proxy-*\"\n\nfunctions:\n  api:\n    handler: src/lambda.handler\n    events:\n      - http:\n          path: /\n          method: ANY\n          cors: true\n      - http:\n          path: /{proxy+}\n          method: ANY\n          cors: true\n\nplugins:\n  - serverless-offline",
+    "command": [
+      "deploy"
+    ],
+    "options": {},
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

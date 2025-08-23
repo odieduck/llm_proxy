@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Proxy Service</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>
         * {
             margin: 0;
@@ -191,10 +192,10 @@
         
         <div class="content">
             <div class="tab-buttons">
-                <button class="tab-button active" onclick="showTab('register')">Register</button>
-                <button class="tab-button" onclick="showTab('login')">Login</button>
-                <button class="tab-button" onclick="showTab('api')">API Test</button>
-                <button class="tab-button" onclick="showTab('subscription')">Subscription</button>
+                <button class="tab-button active" data-tab="register">Register</button>
+                <button class="tab-button" data-tab="login">Login</button>
+                <button class="tab-button" data-tab="api">API Test</button>
+                <button class="tab-button" data-tab="subscription">Subscription</button>
             </div>
 
             <!-- User Info (shown when logged in) -->
@@ -202,13 +203,13 @@
                 <strong>Logged in as:</strong> <span id="user-email"></span><br>
                 <strong>Plan:</strong> <span id="user-plan"></span><br>
                 <strong>Usage:</strong> <span id="user-usage"></span><br>
-                <button onclick="logout()" style="width: auto; margin-top: 10px;">Logout</button>
+                <button id="logout-btn" style="width: auto; margin-top: 10px;">Logout</button>
             </div>
 
             <!-- Register Tab -->
             <div id="register-tab" class="tab-content active">
                 <h2>Create Account</h2>
-                <form onsubmit="register(event)">
+                <form id="register-form">
                     <div class="two-column">
                         <div class="form-group">
                             <label for="reg-email">Email</label>
@@ -231,7 +232,7 @@
             <!-- Login Tab -->
             <div id="login-tab" class="tab-content">
                 <h2>Sign In</h2>
-                <form onsubmit="login(event)">
+                <form id="login-form">
                     <div class="form-group">
                         <label for="login-email">Email</label>
                         <input type="email" id="login-email" required>
@@ -248,11 +249,11 @@
             <!-- API Test Tab -->
             <div id="api-tab" class="tab-content">
                 <h2>Test LLM API</h2>
-                <button onclick="testConnection()" style="width: auto; margin-bottom: 15px;">🔍 Test API Connection</button>
+                <button id="test-connection-btn" style="width: auto; margin-bottom: 15px;">🔍 Test API Connection</button>
                 <div class="two-column">
                     <div class="form-group">
                         <label for="provider">Provider</label>
-                        <select id="provider" onchange="updateModels()">
+                        <select id="provider">
                             <option value="openai">OpenAI</option>
                             <option value="anthropic">Anthropic</option>
                             <option value="bedrock">AWS Bedrock</option>
@@ -261,9 +262,8 @@
                     <div class="form-group">
                         <label for="model">Model</label>
                         <select id="model">
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-5">GPT-5</option>
+                            <option value="gpt-4o">GPT-4o</option>
                         </select>
                     </div>
                 </div>
@@ -281,14 +281,14 @@
                         <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
                     </div>
                 </div>
-                <button onclick="testAPI()" id="api-btn">Send Request</button>
+                <button id="api-btn">Send Request</button>
                 <div id="api-result" class="result hidden"></div>
             </div>
 
             <!-- Subscription Tab -->
             <div id="subscription-tab" class="tab-content">
                 <h2>Subscription & Usage</h2>
-                <button onclick="getSubscription()">Refresh Subscription Status</button>
+                <button id="refresh-subscription-btn">Refresh Subscription Status</button>
                 <div id="subscription-result" class="result hidden"></div>
                 
                 <h3 style="margin-top: 30px;">Available Plans</h3>
@@ -320,6 +320,21 @@
             if (currentToken) {
                 showUserInfo();
             }
+            
+            // Add event listeners
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    showTab(this.dataset.tab);
+                });
+            });
+            
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('register-form').addEventListener('submit', register);
+            document.getElementById('login-form').addEventListener('submit', login);
+            document.getElementById('provider').addEventListener('change', updateModels);
+            document.getElementById('test-connection-btn').addEventListener('click', testConnection);
+            document.getElementById('api-btn').addEventListener('click', testAPI);
+            document.getElementById('refresh-subscription-btn').addEventListener('click', getSubscription);
         });
 
         function showTab(tabName) {
@@ -333,7 +348,7 @@
             
             // Show selected tab
             document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         }
 
         function showResult(elementId, message, isSuccess = true) {
