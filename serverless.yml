@@ -1,0 +1,40 @@
+service: llm-proxy-service
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    NODE_ENV: production
+    AWS_REGION: us-east-1
+    DYNAMODB_USERS_TABLE: llm-proxy-users
+    DYNAMODB_SESSIONS_TABLE: llm-proxy-sessions
+    DYNAMODB_USAGE_TABLE: llm-proxy-usage
+    JWT_SECRET: your-production-jwt-secret-change-this-to-something-secure
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: 
+        - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/llm-proxy-*"
+
+functions:
+  api:
+    handler: src/lambda.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+plugins:
+  - serverless-offline
