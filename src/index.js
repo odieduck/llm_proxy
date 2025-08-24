@@ -16,8 +16,14 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust proxy for App Runner/AWS Load Balancers
-app.set('trust proxy', true);
+// Configure proxy trust for AWS App Runner
+if (process.env.NODE_ENV === 'production') {
+  // In production (AWS App Runner), trust first proxy only
+  app.set('trust proxy', 1);
+} else {
+  // In development, no proxy
+  app.set('trust proxy', false);
+}
 
 // Connect to database
 connectDB();
@@ -26,11 +32,18 @@ connectDB();
 app.use(helmet());
 app.use(cors());
 
-// Rate limiting
+// Rate limiting with proxy awareness
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip validation warnings since we're handling proxy trust above
+  validate: {
+    trustProxy: false,
+    xForwardedForHeader: false
+  }
 });
 app.use(limiter);
 
