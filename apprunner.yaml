@@ -14,3 +14,13 @@ run:
       value: "production"
     - name: AWS_REGION
       value: "us-east-1"
+    - name: JWT_SECRET
+      value: bd4944e1695fcb9021725731d31bb51b518e210f6f9b46ecf370808f5f32fd91
+    - name: SESSION_SECRET
+      value: 3123fd4b6615eeb5873121fb3ea6f92245b42a9ae98f5f3c8c6138626fec645d
+    - name: DYNAMODB_USERS_TABLE
+      value: llm-proxy-users
+    - name: DYNAMODB_SESSIONS_TABLE
+      value: llm-proxy-sessions
+    - name: DYNAMODB_USAGE_TABLE
+      value: llm-proxy-usage
