@@ -16,6 +16,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for App Runner/AWS Load Balancers
+app.set('trust proxy', true);
+
 // Connect to database
 connectDB();
 
