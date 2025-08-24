@@ -113,8 +113,25 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Startup error handling
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 app.listen(PORT, () => {
   logger.info(`LLM Proxy Service (DynamoDB) running on port ${PORT}`);
+  logger.info('Environment check:', {
+    NODE_ENV: process.env.NODE_ENV,
+    JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+    SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'MISSING',
+    AWS_REGION: process.env.AWS_REGION
+  });
 });
 
 module.exports = app;
