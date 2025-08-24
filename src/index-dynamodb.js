@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth-dynamodb');
 const proxyRoutes = require('./routes/proxy');
 const subscriptionRoutes = require('./routes/subscription');
 const iosSubscriptionRoutes = require('./routes/iosSubscription');
+const debugRoutes = require('./routes/debug');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -92,6 +93,7 @@ app.use('/auth', authRoutes);
 app.use('/api', proxyRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/ios', iosSubscriptionRoutes);
+app.use('/debug', debugRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
