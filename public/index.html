@@ -205,6 +205,7 @@
                 <button class="tab-button active" data-tab="register">Register</button>
                 <button class="tab-button" data-tab="login">Login</button>
                 <button class="tab-button" data-tab="api">API Test</button>
+                <button class="tab-button" data-tab="receipt">Receipt Parser</button>
                 <button class="tab-button" data-tab="subscription">Subscription</button>
             </div>
 
@@ -326,6 +327,55 @@
                 <div id="api-result" class="result hidden"></div>
             </div>
 
+            <!-- Receipt Parser Tab -->
+            <div id="receipt-tab" class="tab-content">
+                <h2>🧾 Receipt Parser</h2>
+                <p style="margin-bottom: 20px; color: #666;">Upload a receipt image and let GPT-5 extract all the important information for you!</p>
+                
+                <div class="form-group">
+                    <label for="receipt-image">Receipt Image</label>
+                    <input type="file" id="receipt-image" accept="image/*" required>
+                    <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG, PNG, GIF, WEBP (max 10MB)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="receipt-model">GPT Model</label>
+                    <select id="receipt-model">
+                        <option value="gpt-5">GPT-5 (Recommended for best accuracy)</option>
+                        <option value="gpt-5-mini">GPT-5 Mini (Faster, good accuracy)</option>
+                        <option value="gpt-4o">GPT-4o (Vision capable)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="receipt-instructions">Custom Instructions (Optional)</label>
+                    <textarea id="receipt-instructions" rows="2" placeholder="Any specific information you want extracted or special formatting requirements..."></textarea>
+                </div>
+                
+                <details style="margin-bottom: 15px;">
+                    <summary style="cursor: pointer; padding: 8px; background: #f0f0f0; border-radius: 4px;">📋 What Information Will Be Extracted</summary>
+                    <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; font-size: 0.9rem;">
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Store Information:</strong> Name, address, phone number</li>
+                            <li><strong>Transaction Details:</strong> Date, time, transaction ID</li>
+                            <li><strong>Items:</strong> Names, quantities, prices, discounts</li>
+                            <li><strong>Payment:</strong> Subtotal, tax, total, payment method</li>
+                            <li><strong>Additional:</strong> Loyalty programs, return policy, coupons</li>
+                        </ul>
+                        <p style="margin-top: 10px; font-style: italic;">Results are formatted as structured JSON for easy processing.</p>
+                    </div>
+                </details>
+                
+                <button id="parse-receipt-btn">🔍 Parse Receipt</button>
+                <div id="receipt-result" class="result hidden"></div>
+                
+                <div id="image-preview" class="hidden" style="margin-top: 20px;">
+                    <h4>Image Preview:</h4>
+                    <img id="preview-img" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px;" />
+                </div>
+            </div>
+
             <!-- Subscription Tab -->
             <div id="subscription-tab" class="tab-content">
                 <h2>Subscription & Usage</h2>
@@ -377,6 +427,8 @@
             document.getElementById('test-connection-btn').addEventListener('click', testConnection);
             document.getElementById('test-model-info-btn').addEventListener('click', testModelInfo);
             document.getElementById('api-btn').addEventListener('click', testAPI);
+            document.getElementById('parse-receipt-btn').addEventListener('click', parseReceipt);
+            document.getElementById('receipt-image').addEventListener('change', previewImage);
             document.getElementById('refresh-subscription-btn').addEventListener('click', getSubscription);
         });
 
@@ -844,6 +896,115 @@
                 console.error('Email verification error:', error);
                 alert(`❌ Network error during verification: ${error.message}`);
             }
+        }
+
+        // Receipt parsing functions
+        function previewImage() {
+            const fileInput = document.getElementById('receipt-image');
+            const previewDiv = document.getElementById('image-preview');
+            const previewImg = document.getElementById('preview-img');
+            
+            if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
+                
+                // Check file size (10MB limit)
+                if (file.size > 10 * 1024 * 1024) {
+                    showResult('receipt-result', '❌ File size too large. Please select an image smaller than 10MB.', false);
+                    fileInput.value = '';
+                    previewDiv.classList.add('hidden');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewDiv.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewDiv.classList.add('hidden');
+            }
+        }
+
+        async function parseReceipt() {
+            if (!currentToken) {
+                showResult('receipt-result', '❌ Please login first to use the receipt parser', false);
+                showTab('login');
+                return;
+            }
+
+            const fileInput = document.getElementById('receipt-image');
+            const btn = document.getElementById('parse-receipt-btn');
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                showResult('receipt-result', '❌ Please select a receipt image first', false);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '🔄 Analyzing Receipt...';
+
+            const formData = new FormData();
+            formData.append('receipt', fileInput.files[0]);
+            formData.append('model', document.getElementById('receipt-model').value);
+            
+            const customInstructions = document.getElementById('receipt-instructions').value;
+            if (customInstructions.trim()) {
+                formData.append('instructions', customInstructions);
+            }
+
+            try {
+                console.log('Parsing receipt with model:', formData.get('model'));
+                console.log('File size:', fileInput.files[0].size, 'bytes');
+                
+                const response = await fetch(`${API_BASE}/api/parse-receipt`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                        // Don't set Content-Type for FormData, let browser set it
+                    },
+                    body: formData
+                });
+
+                console.log('Receipt parsing response status:', response.status);
+                const data = await response.json();
+                console.log('Receipt parsing response data:', data);
+
+                if (response.ok) {
+                    const model = data.data.model;
+                    const apiType = data.data.api === 'responses' ? 'Response API' : 'Chat Completions API';
+                    
+                    let resultText = `✅ Receipt Parsed Successfully!\n\n`;
+                    resultText += `📱 Model: ${model} (${apiType})\n`;
+                    resultText += `📸 Image: ${data.data.imageType} (${(data.data.imageSize / 1024).toFixed(1)} KB)\n`;
+                    if (data.data.response_id) {
+                        resultText += `🆔 Response ID: ${data.data.response_id}\n`;
+                    }
+                    resultText += `\n🧾 Extracted Information:\n${data.data.response}\n\n`;
+                    
+                    if (data.data.usage) {
+                        resultText += `📊 Token Usage:\n`;
+                        if (data.data.usage.prompt_tokens) resultText += `  Input: ${data.data.usage.prompt_tokens} tokens\n`;
+                        if (data.data.usage.completion_tokens) resultText += `  Output: ${data.data.usage.completion_tokens} tokens\n`;
+                        if (data.data.usage.total_tokens) resultText += `  Total: ${data.data.usage.total_tokens} tokens\n`;
+                    }
+                    
+                    showResult('receipt-result', resultText, true);
+                } else if (response.status === 401) {
+                    showResult('receipt-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
+                    logout();
+                } else if (response.status === 403 && data.error === 'Email verification required') {
+                    showResult('receipt-result', `📧 Email Verification Required\n\n${data.message}\n\nPlease verify your email address to use the receipt parser.\n\nClick the "Verify Now" button in your user info above.`, false);
+                } else {
+                    showResult('receipt-result', `❌ Receipt Parsing Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
+                }
+            } catch (error) {
+                console.error('Receipt parsing error:', error);
+                showResult('receipt-result', `❌ Network error:\n${error.message}`, false);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🔍 Parse Receipt';
         }
 
         // Initialize models on page load and handle verification
