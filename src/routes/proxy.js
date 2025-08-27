@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const Joi = require('joi');
 const { authenticateToken } = require('../middleware/auth');
 const { checkSubscription, requireActivePlan, trackUsage } = require('../middleware/subscription');
@@ -7,6 +8,21 @@ const providerManager = require('../providers');
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
+
+// Configure multer for image uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 const completionSchema = Joi.object({
   provider: Joi.string().valid('openai').required(),
@@ -170,6 +186,110 @@ router.get('/model-info', authenticateToken, (req, res) => {
     }
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Receipt parsing endpoint - accepts image uploads and sends to GPT-5
+router.post('/parse-receipt', authenticateToken, requireEmailVerification, checkSubscription, trackUsage, upload.single('receipt'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No receipt image provided' });
+    }
+
+    // Convert image to base64
+    const base64Image = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
+    
+    // Use GPT-5 as default model for receipt parsing
+    const model = req.body.model || 'gpt-5';
+    
+    // Create a specialized prompt for receipt parsing
+    const prompt = `Please analyze this receipt image and extract all the important information in a structured format. Include:
+
+1. Store/Business Information:
+   - Store name
+   - Store address
+   - Store phone number
+
+2. Transaction Details:
+   - Date and time
+   - Transaction ID or receipt number
+
+3. Items Purchased:
+   - Item names
+   - Quantities
+   - Individual prices
+   - Any discounts applied
+
+4. Payment Information:
+   - Subtotal
+   - Tax amount
+   - Total amount
+   - Payment method (if visible)
+
+5. Additional Information:
+   - Any loyalty program details
+   - Return policy information
+   - Any special offers or coupons used
+
+Please format the response as a clear, structured JSON object.`;
+
+    // Prepare the request for GPT-5 Vision
+    const options = {
+      max_tokens: 2000,
+      temperature: 0.1, // Lower temperature for more accurate parsing
+      instructions: req.body.instructions || "You are a receipt parsing assistant. Extract information accurately and format it as JSON."
+    };
+
+    logger.info('Receipt parsing request', {
+      user: req.user.username,
+      model: model,
+      fileSize: req.file.size,
+      mimeType: mimeType
+    });
+
+    // For GPT-5, we need to format the message with the image
+    const imageMessage = {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: prompt
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:${mimeType};base64,${base64Image}`
+          }
+        }
+      ]
+    };
+
+    // Generate completion with image
+    const result = await providerManager.generateCompletionWithImage(
+      'openai',
+      model,
+      imageMessage,
+      options
+    );
+
+    req.llmResponse = result;
+    
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        parsedReceipt: true,
+        imageSize: req.file.size,
+        imageType: mimeType
+      }
+    });
+  } catch (error) {
+    logger.error('Receipt parsing error', { 
+      user: req.user?.username,
+      error: error.message 
+    });
+    next(error);
   }
 });
 
