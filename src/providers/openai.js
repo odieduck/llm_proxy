@@ -1,16 +1,42 @@
 const axios = require('axios');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { logger } = require('../utils/logger');
 
 class OpenAIProvider {
   constructor() {
     this.baseURL = 'https://api.openai.com/v1';
-    this.apiKey = process.env.OPENAI_API_KEY;
+    this.apiKey = null;
+    this.secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    this.secretName = 'llm-proxy-openai-api-key';
+  }
+
+  async getApiKey() {
+    if (this.apiKey) {
+      return this.apiKey;
+    }
+
+    try {
+      // Try environment variable first (for local development)
+      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
+        this.apiKey = process.env.OPENAI_API_KEY;
+        return this.apiKey;
+      }
+
+      // Fallback to AWS Secrets Manager (for production)
+      const command = new GetSecretValueCommand({ SecretId: this.secretName });
+      const response = await this.secretsClient.send(command);
+      this.apiKey = response.SecretString;
+      
+      logger.info('OpenAI API key loaded from AWS Secrets Manager');
+      return this.apiKey;
+    } catch (error) {
+      logger.error('Failed to retrieve OpenAI API key', { error: error.message });
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable or configure AWS Secrets Manager.');
+    }
   }
 
   async generateCompletion(model, prompt, options = {}) {
-    if (!this.apiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
+    const apiKey = await this.getApiKey();
 
     // Use Response API for GPT-5 models, Chat Completions for others
     const useResponseAPI = model.startsWith('gpt-5');
@@ -32,6 +58,7 @@ class OpenAIProvider {
   }
 
   async generateChatCompletion(model, prompt, options = {}) {
+    const apiKey = await this.getApiKey();
     const response = await axios.post(
       `${this.baseURL}/chat/completions`,
       {
@@ -43,7 +70,7 @@ class OpenAIProvider {
       },
       {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
         timeout: 30000
@@ -61,6 +88,7 @@ class OpenAIProvider {
   }
 
   async generateResponseCompletion(model, prompt, options = {}) {
+    const apiKey = await this.getApiKey();
     // Build request body according to official OpenAI Response API spec
     const requestBody = {
       model: model,
@@ -99,7 +127,7 @@ class OpenAIProvider {
       requestBody,
       {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
         timeout: 60000 // Longer timeout for Response API
@@ -128,6 +156,127 @@ class OpenAIProvider {
     }
 
     // Extract usage information
+    if (response.data.usage) {
+      usage = response.data.usage;
+    }
+
+    return {
+      provider: 'openai',
+      model: model,
+      api: 'responses',
+      response: responseText || 'No response generated',
+      usage: usage,
+      response_id: response.data.id || null,
+      raw: response.data
+    };
+  }
+
+  async generateCompletionWithImage(model, message, options = {}) {
+    const apiKey = await this.getApiKey();
+
+    // Use Response API for GPT-5 models, Chat Completions for others
+    const useResponseAPI = model.startsWith('gpt-5');
+    
+    try {
+      if (useResponseAPI) {
+        return await this.generateResponseCompletionWithImage(model, message, options);
+      } else {
+        return await this.generateChatCompletionWithImage(model, message, options);
+      }
+    } catch (error) {
+      logger.error('OpenAI Vision API error', { 
+        model, 
+        api: useResponseAPI ? 'responses' : 'chat/completions',
+        error: error.response?.data || error.message 
+      });
+      throw new Error(`OpenAI Vision API error: ${error.response?.data?.error?.message || error.message}`);
+    }
+  }
+
+  async generateChatCompletionWithImage(model, message, options = {}) {
+    const apiKey = await this.getApiKey();
+    const response = await axios.post(
+      `${this.baseURL}/chat/completions`,
+      {
+        model: model,
+        messages: [message],
+        max_tokens: options.max_tokens || 2000,
+        temperature: options.temperature || 0.7,
+        ...options
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000 // Longer timeout for image processing
+      }
+    );
+
+    return {
+      provider: 'openai',
+      model: model,
+      api: 'chat/completions',
+      response: response.data.choices[0].message.content,
+      usage: response.data.usage,
+      raw: response.data
+    };
+  }
+
+  async generateResponseCompletionWithImage(model, message, options = {}) {
+    const apiKey = await this.getApiKey();
+    // For Response API with images, we need to format differently
+    const requestBody = {
+      model: model,
+      input: [message], // Array of messages for multimodal input
+      instructions: options.instructions || null,
+      max_output_tokens: options.max_tokens || 2000,
+      temperature: options.temperature || 0.1,
+      top_p: options.top_p || null,
+      stream: false,
+      store: true,
+      service_tier: 'auto',
+      parallel_tool_calls: options.parallel_tool_calls !== false,
+      safety_identifier: options.safety_identifier || null,
+      metadata: options.metadata || null
+    };
+
+    // Add text configuration for JSON response if specified
+    if (options.response_format) {
+      requestBody.text = {
+        format: options.response_format
+      };
+    }
+
+    const response = await axios.post(
+      `${this.baseURL}/responses`,
+      requestBody,
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 90000 // Even longer timeout for image processing with Response API
+      }
+    );
+
+    // Parse response according to Response API format
+    let responseText = '';
+    let usage = null;
+    
+    if (response.data.output && Array.isArray(response.data.output)) {
+      const textItems = response.data.output.filter(item => 
+        item.type === 'message' && item.message && item.message.content
+      );
+      if (textItems.length > 0) {
+        responseText = textItems[0].message.content;
+      }
+    } else if (response.data.choices && response.data.choices.length > 0) {
+      responseText = response.data.choices[0].message?.content || '';
+    } else if (response.data.text) {
+      responseText = response.data.text;
+    }
+
     if (response.data.usage) {
       usage = response.data.usage;
     }

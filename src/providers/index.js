@@ -24,6 +24,11 @@ class ProviderManager {
     return await providerInstance.generateCompletion(model, prompt, options);
   }
 
+  async generateCompletionWithImage(provider, model, message, options = {}) {
+    const providerInstance = this.getProvider(provider);
+    return await providerInstance.generateCompletionWithImage(model, message, options);
+  }
+
   getSupportedModels(providerName = null) {
     if (providerName) {
       const provider = this.getProvider(providerName);

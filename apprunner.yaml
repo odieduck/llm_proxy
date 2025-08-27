@@ -28,7 +28,7 @@ run:
       value: api.finbrightai.com
     - name: SESSION_TIMEOUT_HOURS
       value: "5"
-    # OpenAI API Key - REPLACE WITH YOUR ACTUAL KEY
+    # OpenAI API Key - Set from environment or replace with actual key
     - name: OPENAI_API_KEY
       value: "your-openai-api-key-here"
     # Email verification settings
