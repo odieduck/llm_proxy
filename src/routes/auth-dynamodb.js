@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const passport = require('../config/passport');
 const dynamoDBService = require('../config/dynamodb');
+const emailService = require('../utils/email');
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
@@ -33,7 +34,7 @@ const generateToken = (user) => {
       }
     },
     process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: `${process.env.SESSION_TIMEOUT_HOURS || 5}h` } // Match session timeout
   );
 };
 
@@ -60,17 +61,30 @@ router.post('/register', async (req, res, next) => {
       password: hashedPassword,
       role: 'user'
     });
+
+    // Generate email verification token
+    const verificationToken = emailService.generateVerificationToken();
+    const tokenExpires = emailService.getTokenExpiration(24); // 24 hours
+
+    // Store verification token in database
+    await dynamoDBService.setEmailVerificationToken(email, verificationToken, tokenExpires);
+
+    // Send verification email
+    const emailResult = await emailService.sendVerificationEmail(email, verificationToken, username);
     
     const token = generateToken(user);
-    logger.info('User registered', { userId: user.userId, email });
+    logger.info('User registered', { userId: user.userId, email, emailVerificationSent: emailResult.success });
     
     res.status(201).json({ 
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please check your email to verify your account.',
       token,
+      emailVerificationRequired: true,
+      emailVerified: false,
       user: {
         id: user.userId,
         email: user.email,
         username: user.username,
+        emailVerified: false,
         subscription: user.subscription
       }
     });
@@ -105,8 +119,105 @@ router.post('/login', async (req, res, next) => {
         id: user.userId,
         email: user.email,
         username: user.username,
+        emailVerified: user.emailVerified || false,
         subscription: user.subscription
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Email verification routes
+router.get('/verify-email', async (req, res, next) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+
+    const user = await dynamoDBService.verifyEmailToken(token);
+
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired verification token',
+        message: 'Please request a new verification email.'
+      });
+    }
+
+    logger.info('Email verified successfully', { userId: user.userId, email: user.email });
+    
+    res.json({
+      message: 'Email verified successfully! You can now use all features.',
+      user: {
+        id: user.userId,
+        email: user.email,
+        username: user.username,
+        emailVerified: true
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/resend-verification', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await dynamoDBService.resendVerificationEmail(email);
+
+    // Generate new verification token
+    const verificationToken = emailService.generateVerificationToken();
+    const tokenExpires = emailService.getTokenExpiration(24); // 24 hours
+
+    // Update verification token in database
+    await dynamoDBService.setEmailVerificationToken(email, verificationToken, tokenExpires);
+
+    // Send verification email
+    const emailResult = await emailService.sendVerificationEmail(email, verificationToken, user.username);
+
+    logger.info('Verification email resent', { email, success: emailResult.success });
+
+    res.json({
+      message: 'Verification email sent! Please check your inbox.',
+      success: emailResult.success
+    });
+  } catch (error) {
+    if (error.message === 'User not found') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (error.message === 'Email already verified') {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+    next(error);
+  }
+});
+
+// Check email verification status
+router.get('/verification-status', async (req, res, next) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await dynamoDBService.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      email: user.email,
+      emailVerified: user.emailVerified || false,
+      verificationRequired: !user.emailVerified
     });
   } catch (error) {
     next(error);

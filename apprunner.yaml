@@ -24,3 +24,19 @@ run:
       value: llm-proxy-sessions
     - name: DYNAMODB_USAGE_TABLE
       value: llm-proxy-usage
+    - name: CUSTOM_DOMAIN
+      value: api.finbrightai.com
+    - name: SESSION_TIMEOUT_HOURS
+      value: "5"
+    # OpenAI API Key - REPLACE WITH YOUR ACTUAL KEY
+    - name: OPENAI_API_KEY
+      value: "your-openai-api-key-here"
+    # Email verification settings
+    - name: EMAIL_SERVICE_ENABLED
+      value: "false"
+    - name: FROM_EMAIL
+      value: "noreply@finbrightai.com"
+    - name: BASE_URL
+      value: "https://api.finbrightai.com"
+    - name: REQUIRE_EMAIL_VERIFICATION
+      value: "true"

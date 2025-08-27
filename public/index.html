@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Proxy Service</title>
+    <title>GPT-5 LLM Proxy Service</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>
         * {
@@ -161,6 +161,16 @@
             border-left: 4px solid #2196f3;
         }
         
+        .email-verified {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .email-unverified {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
         .hidden {
             display: none !important;
         }
@@ -186,8 +196,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 LLM Proxy Service</h1>
-            <p>Your gateway to multiple AI providers</p>
+            <h1>🚀 GPT-5 LLM Proxy Service</h1>
+            <p>Your gateway to GPT-5, GPT-4o, and advanced OpenAI models</p>
         </div>
         
         <div class="content">
@@ -201,6 +211,7 @@
             <!-- User Info (shown when logged in) -->
             <div id="user-info" class="user-info hidden">
                 <strong>Logged in as:</strong> <span id="user-email"></span><br>
+                <strong>Status:</strong> <span id="user-email-status"></span><br>
                 <strong>Plan:</strong> <span id="user-plan"></span><br>
                 <strong>Usage:</strong> <span id="user-usage"></span><br>
                 <button id="logout-btn" style="width: auto; margin-top: 10px;">Logout</button>
@@ -249,23 +260,32 @@
             <!-- API Test Tab -->
             <div id="api-tab" class="tab-content">
                 <h2>Test LLM API</h2>
-                <button id="test-connection-btn" style="width: auto; margin-bottom: 15px;">🔍 Test API Connection</button>
-                <div class="two-column">
-                    <div class="form-group">
-                        <label for="provider">Provider</label>
-                        <select id="provider">
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="bedrock">AWS Bedrock</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="model">Model</label>
-                        <select id="model">
-                            <option value="gpt-5">GPT-5</option>
+                <div style="margin-bottom: 15px;">
+                    <button id="test-connection-btn" style="width: auto; margin-right: 10px;">🔍 Test API Connection</button>
+                    <button id="test-model-info-btn" style="width: auto;">📋 Model Information</button>
+                </div>
+                <div class="form-group">
+                    <label for="model">OpenAI Model</label>
+                    <select id="model">
+                        <optgroup label="GPT-5 (Latest Generation)">
+                            <option value="gpt-5">GPT-5 (Flagship)</option>
+                            <option value="gpt-5-mini">GPT-5 Mini (Efficient)</option>
+                            <option value="gpt-5-nano">GPT-5 Nano (Ultra-fast)</option>
+                        </optgroup>
+                        <optgroup label="GPT-4o (Previous Generation)">
                             <option value="gpt-4o">GPT-4o</option>
-                        </select>
-                    </div>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        </optgroup>
+                        <optgroup label="GPT-4 (Legacy)">
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                        </optgroup>
+                        <optgroup label="Reasoning Models">
+                            <option value="o3-mini">O3 Mini (Latest)</option>
+                            <option value="o1-preview">O1 Preview</option>
+                            <option value="o1-mini">O1 Mini</option>
+                        </optgroup>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="prompt">Prompt</label>
@@ -281,6 +301,27 @@
                         <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="instructions">Instructions (System Message)</label>
+                    <textarea id="instructions" rows="2" placeholder="Optional system instructions for GPT-5 models..."></textarea>
+                </div>
+                <details style="margin-bottom: 15px;">
+                    <summary style="cursor: pointer; padding: 8px; background: #f0f0f0; border-radius: 4px;">🔧 Advanced Options (GPT-5 Response API)</summary>
+                    <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+                        <div class="form-group">
+                            <label for="response-format">Response Format</label>
+                            <select id="response-format">
+                                <option value="">Auto (Default)</option>
+                                <option value="text">Plain Text</option>
+                                <option value="json_object">JSON Object</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="safety-identifier">Safety Identifier</label>
+                            <input type="text" id="safety-identifier" placeholder="Optional user identifier for safety">
+                        </div>
+                    </div>
+                </details>
                 <button id="api-btn">Send Request</button>
                 <div id="api-result" class="result hidden"></div>
             </div>
@@ -311,7 +352,9 @@
     </div>
 
     <script>
-        const API_BASE = 'https://px7krvpbnv.us-east-1.awsapprunner.com';
+        // API Configuration - update this if your domain changes
+        const API_BASE = window.location.origin; // Use same domain as the page
+        // Alternative: const API_BASE = 'https://api.finbrightai.com';
         let currentToken = localStorage.getItem('jwt_token');
         let currentUser = JSON.parse(localStorage.getItem('user_data') || '{}');
 
@@ -331,8 +374,8 @@
             document.getElementById('logout-btn').addEventListener('click', logout);
             document.getElementById('register-form').addEventListener('submit', register);
             document.getElementById('login-form').addEventListener('submit', login);
-            document.getElementById('provider').addEventListener('change', updateModels);
             document.getElementById('test-connection-btn').addEventListener('click', testConnection);
+            document.getElementById('test-model-info-btn').addEventListener('click', testModelInfo);
             document.getElementById('api-btn').addEventListener('click', testAPI);
             document.getElementById('refresh-subscription-btn').addEventListener('click', getSubscription);
         });
@@ -365,6 +408,16 @@
                 document.getElementById('user-plan').textContent = currentUser.subscription?.plan || 'Unknown';
                 document.getElementById('user-usage').textContent = 
                     `${currentUser.subscription?.usage?.requests?.current || 0}/${currentUser.subscription?.usage?.requests?.limit || 0} requests`;
+                
+                // Show email verification status
+                const emailStatus = document.getElementById('user-email-status');
+                if (currentUser.emailVerified) {
+                    emailStatus.innerHTML = '✅ Email Verified';
+                    emailStatus.className = 'email-verified';
+                } else {
+                    emailStatus.innerHTML = '⚠️ Email Not Verified - <button onclick="resendVerificationEmail(\'' + currentUser.email + '\')" style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verify Now</button>';
+                    emailStatus.className = 'email-unverified';
+                }
             }
         }
 
@@ -409,7 +462,23 @@
                     localStorage.setItem('jwt_token', currentToken);
                     localStorage.setItem('user_data', JSON.stringify(currentUser));
                     
-                    showResult('register-result', `✅ Account created successfully!\n\nWelcome ${data.user.username}!\nEmail: ${data.user.email}\nPlan: ${data.user.subscription.plan}\nToken expires: ${new Date(Date.now() + 24*60*60*1000).toLocaleDateString()}`, true);
+                    let message = `✅ Account created successfully!\n\nWelcome ${data.user.username}!\nEmail: ${data.user.email}\nPlan: ${data.user.subscription.plan}`;
+                    
+                    if (data.emailVerificationRequired) {
+                        message += `\n\n📧 IMPORTANT: Please check your email to verify your account.\nLook in your inbox (and spam folder) for a verification link.`;
+                        
+                        // Add resend verification button
+                        setTimeout(() => {
+                            const resultDiv = document.getElementById('register-result');
+                            const resendBtn = document.createElement('button');
+                            resendBtn.innerHTML = '📧 Resend Verification Email';
+                            resendBtn.style.marginTop = '10px';
+                            resendBtn.onclick = () => resendVerificationEmail(data.user.email);
+                            resultDiv.appendChild(resendBtn);
+                        }, 100);
+                    }
+                    
+                    showResult('register-result', message, true);
                     showUserInfo();
                     
                     // Clear form
@@ -459,7 +528,7 @@
                     localStorage.setItem('jwt_token', currentToken);
                     localStorage.setItem('user_data', JSON.stringify(currentUser));
                     
-                    showResult('login-result', `✅ Welcome back ${data.user.username}!\n\nPlan: ${data.user.subscription.plan}\nUsage: ${data.user.subscription.usage.requests.current}/${data.user.subscription.usage.requests.limit} requests`, true);
+                    showResult('login-result', `✅ Welcome back ${data.user.username}!\n\nPlan: ${data.user.subscription.plan}\nUsage: ${data.user.subscription.usage.requests.current}/${data.user.subscription.usage.requests.limit} requests\n\n⏰ Session expires after 5 hours of inactivity`, true);
                     showUserInfo();
                     
                     // Clear form
@@ -480,22 +549,8 @@
         }
 
         async function updateModels() {
-            const provider = document.getElementById('provider').value;
-            const modelSelect = document.getElementById('model');
-            
-            const models = {
-                openai: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'o1-preview', 'o1-mini'],
-                anthropic: ['claude-3-5-sonnet', 'claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-                bedrock: ['claude-3-sonnet', 'claude-3-haiku', 'titan-text', 'jurassic-2-ultra']
-            };
-
-            modelSelect.innerHTML = '';
-            models[provider].forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
-            });
+            // Models are now hardcoded in HTML - no need to update dynamically
+            console.log('OpenAI models loaded');
         }
 
         async function testAPI() {
@@ -517,13 +572,30 @@
                 return;
             }
 
+            // Build request data with Response API parameters
             const requestData = {
-                provider: document.getElementById('provider').value,
+                provider: 'openai',  // Always use OpenAI
                 model: document.getElementById('model').value,
                 prompt: prompt,
                 max_tokens: parseInt(document.getElementById('max-tokens').value),
                 temperature: parseFloat(document.getElementById('temperature').value)
             };
+
+            // Add Response API specific parameters
+            const instructions = document.getElementById('instructions').value;
+            if (instructions.trim()) {
+                requestData.instructions = instructions;
+            }
+
+            const responseFormat = document.getElementById('response-format').value;
+            if (responseFormat) {
+                requestData.response_format = responseFormat;
+            }
+
+            const safetyIdentifier = document.getElementById('safety-identifier').value;
+            if (safetyIdentifier.trim()) {
+                requestData.safety_identifier = safetyIdentifier;
+            }
 
             try {
                 console.log('Testing API with:', requestData);
@@ -544,10 +616,30 @@
                 console.log('API response data:', data);
 
                 if (response.ok) {
-                    showResult('api-result', `✅ API Request Successful!\n\n${JSON.stringify(data, null, 2)}`, true);
+                    const model = requestData.model;
+                    const apiType = model.startsWith('gpt-5') ? 'Response API' : 'Chat Completions API';
+                    
+                    let resultText = `✅ ${apiType} Request Successful!\n\n`;
+                    resultText += `Model: ${data.model}\n`;
+                    resultText += `API: ${data.api || 'unknown'}\n`;
+                    if (data.response_id) {
+                        resultText += `Response ID: ${data.response_id}\n`;
+                    }
+                    resultText += `\nResponse:\n${data.response || 'No response'}\n\n`;
+                    
+                    if (data.usage) {
+                        resultText += `Usage:\n`;
+                        if (data.usage.prompt_tokens) resultText += `  Prompt tokens: ${data.usage.prompt_tokens}\n`;
+                        if (data.usage.completion_tokens) resultText += `  Completion tokens: ${data.usage.completion_tokens}\n`;
+                        if (data.usage.total_tokens) resultText += `  Total tokens: ${data.usage.total_tokens}\n`;
+                    }
+                    
+                    showResult('api-result', resultText, true);
                 } else if (response.status === 401) {
                     showResult('api-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
                     logout();
+                } else if (response.status === 403 && data.error === 'Email verification required') {
+                    showResult('api-result', `📧 Email Verification Required\n\n${data.message}\n\nPlease verify your email address to use API features.\n\nClick the "Verify Now" button in your user info above.`, false);
                 } else {
                     showResult('api-result', `❌ API Request Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
                 }
@@ -622,7 +714,7 @@
                 console.log('Connection test response data:', data);
 
                 if (response.ok) {
-                    showResult('api-result', `✅ API Connection Successful!\n\nAvailable providers: ${data.data.join(', ')}\nToken is valid: ✅\nServer is responding: ✅`, true);
+                    showResult('api-result', `✅ API Connection Successful!\n\nProvider: OpenAI\nToken is valid: ✅\nServer is responding: ✅`, true);
                 } else {
                     showResult('api-result', `❌ API Connection Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
                 }
@@ -632,8 +724,131 @@
             }
         }
 
-        // Initialize models on page load
+        async function testModelInfo() {
+            if (!currentToken) {
+                showResult('api-result', '❌ Please login first', false);
+                return;
+            }
+
+            try {
+                console.log('Getting model information...');
+                
+                const selectedModel = document.getElementById('model').value;
+                const response = await fetch(`${API_BASE}/api/model-info?model=${selectedModel}`, {
+                    headers: { 
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('Model info response status:', response.status);
+                const data = await response.json();
+                console.log('Model info response data:', data);
+
+                if (response.ok) {
+                    const info = data.data;
+                    showResult('api-result', 
+                        `📋 Model Information: ${selectedModel}\n\n` +
+                        `API Endpoint: /v1/${info.endpoint}\n` +
+                        `Tier: ${info.tier}\n` +
+                        `Generation: ${info.generation}\n` +
+                        `Uses Response API: ${info.api === 'responses' ? 'Yes' : 'No'}\n\n` +
+                        `${info.api === 'responses' ? '✨ Using latest OpenAI Response API format' : '📝 Using Chat Completions API format'}`, 
+                        true
+                    );
+                } else {
+                    showResult('api-result', `❌ Failed to get model info (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
+                }
+            } catch (error) {
+                console.error('Model info error:', error);
+                showResult('api-result', `❌ Network error:\n${error.message}`, false);
+            }
+        }
+
+        // Email verification functions
+        async function resendVerificationEmail(email) {
+            try {
+                console.log('Resending verification email to:', email);
+                
+                const response = await fetch(`${API_BASE}/auth/resend-verification`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                console.log('Resend verification response:', data);
+                
+                if (response.ok) {
+                    showResult('register-result', `✅ Verification email sent!\n\nPlease check your inbox (and spam folder) for the verification link.`, true);
+                } else {
+                    showResult('register-result', `❌ Failed to resend verification email:\n${data.error}`, false);
+                }
+            } catch (error) {
+                console.error('Resend verification error:', error);
+                showResult('register-result', `❌ Network error:\n${error.message}`, false);
+            }
+        }
+
+        async function checkVerificationStatus(email) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/verification-status?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    return data;
+                }
+                return null;
+            } catch (error) {
+                console.error('Check verification status error:', error);
+                return null;
+            }
+        }
+
+        // Handle email verification from URL
+        function handleEmailVerificationFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (token) {
+                verifyEmailWithToken(token);
+            }
+        }
+
+        async function verifyEmailWithToken(token) {
+            try {
+                console.log('Verifying email with token:', token.substring(0, 10) + '...');
+                
+                const response = await fetch(`${API_BASE}/auth/verify-email?token=${token}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ ${data.message}`);
+                    
+                    // Update user data if logged in
+                    if (currentUser && currentUser.email === data.user.email) {
+                        currentUser.emailVerified = true;
+                        localStorage.setItem('user_data', JSON.stringify(currentUser));
+                        showUserInfo();
+                    }
+                    
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    alert(`❌ Verification failed: ${data.error}\n\n${data.message || 'Please try again.'}`);
+                }
+            } catch (error) {
+                console.error('Email verification error:', error);
+                alert(`❌ Network error during verification: ${error.message}`);
+            }
+        }
+
+        // Initialize models on page load and handle verification
         updateModels();
+        handleEmailVerificationFromURL();
     </script>
 </body>
 </html>

@@ -2,22 +2,32 @@ const express = require('express');
 const Joi = require('joi');
 const { authenticateToken } = require('../middleware/auth');
 const { checkSubscription, requireActivePlan, trackUsage } = require('../middleware/subscription');
+const { requireEmailVerification } = require('../middleware/emailVerification');
 const providerManager = require('../providers');
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
 const completionSchema = Joi.object({
-  provider: Joi.string().valid('openai', 'anthropic', 'bedrock').required(),
+  provider: Joi.string().valid('openai').required(),
   model: Joi.string().required(),
   prompt: Joi.string().required(),
+  // Standard parameters
   max_tokens: Joi.number().integer().min(1).max(4000).optional(),
   temperature: Joi.number().min(0).max(2).optional(),
-  top_p: Joi.number().min(0).max(1).optional()
+  top_p: Joi.number().min(0).max(1).optional(),
+  // Response API specific parameters
+  instructions: Joi.string().optional(),
+  response_format: Joi.string().optional(),
+  tools: Joi.array().optional(),
+  tool_choice: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
+  parallel_tool_calls: Joi.boolean().optional(),
+  safety_identifier: Joi.string().optional(),
+  metadata: Joi.object().optional()
 });
 
 // Main proxy endpoint supporting both query params and body
-router.get('/', authenticateToken, checkSubscription, trackUsage, async (req, res, next) => {
+router.get('/', authenticateToken, requireEmailVerification, checkSubscription, trackUsage, async (req, res, next) => {
   try {
     const { provider, model, prompt, max_tokens, temperature, top_p } = req.query;
     
@@ -65,7 +75,7 @@ router.get('/', authenticateToken, checkSubscription, trackUsage, async (req, re
 });
 
 // POST endpoint for more complex requests
-router.post('/completion', authenticateToken, checkSubscription, trackUsage, async (req, res, next) => {
+router.post('/completion', authenticateToken, requireEmailVerification, checkSubscription, trackUsage, async (req, res, next) => {
   try {
     const { error, value } = completionSchema.validate(req.body);
     if (error) {
@@ -124,6 +134,43 @@ router.get('/providers', authenticateToken, (req, res) => {
     success: true,
     data: providers
   });
+});
+
+// Get model information including API endpoints
+router.get('/model-info', authenticateToken, (req, res) => {
+  const { model } = req.query;
+  
+  try {
+    const openaiProvider = providerManager.getProvider('openai');
+    const allModels = openaiProvider.getSupportedModels();
+    const modelInfo = openaiProvider.getModelInfo();
+    
+    if (model) {
+      const info = modelInfo[model];
+      if (!info) {
+        return res.status(404).json({ error: `Model ${model} not found` });
+      }
+      
+      res.json({
+        success: true,
+        model: model,
+        data: {
+          ...info,
+          endpoint: openaiProvider.getAPIEndpoint(model)
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          models: allModels,
+          modelInfo: modelInfo
+        }
+      });
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 module.exports = router;

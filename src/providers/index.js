@@ -1,13 +1,9 @@
 const OpenAIProvider = require('./openai');
-const AnthropicProvider = require('./anthropic');
-const BedrockProvider = require('./bedrock');
 
 class ProviderManager {
   constructor() {
     this.providers = {
-      openai: new OpenAIProvider(),
-      anthropic: new AnthropicProvider(),
-      bedrock: new BedrockProvider()
+      openai: new OpenAIProvider()
     };
   }
 

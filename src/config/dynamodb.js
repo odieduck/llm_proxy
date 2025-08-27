@@ -56,6 +56,9 @@ class DynamoDBService {
         password: userData.password,
         role: userData.role || 'user',
         socialProviders: userData.socialProviders || [],
+        emailVerified: false,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
         subscription: {
           plan: 'free',
           status: 'active',
@@ -315,6 +318,7 @@ class DynamoDBService {
       username: dynamoItem.username,
       password: dynamoItem.password,
       role: dynamoItem.role,
+      emailVerified: dynamoItem.emailVerified || false,
       socialProviders: dynamoItem.socialProviders || [],
       subscription: dynamoItem.subscription,
       createdAt: dynamoItem.createdAt,
@@ -345,6 +349,87 @@ class DynamoDBService {
   hasActiveSubscription(user) {
     if (!user || !user.subscription) return false;
     return user.subscription.status === 'active';
+  }
+
+  // Email verification methods
+  async setEmailVerificationToken(email, token, expiresAt) {
+    try {
+      await this.docClient.send(new UpdateCommand({
+        TableName: this.tables.users,
+        Key: {
+          PK: `USER#${email}`,
+          SK: 'PROFILE'
+        },
+        UpdateExpression: 'SET emailVerificationToken = :token, emailVerificationExpires = :expires',
+        ExpressionAttributeValues: {
+          ':token': token,
+          ':expires': expiresAt
+        },
+        ConditionExpression: 'attribute_exists(PK)'
+      }));
+      
+      logger.info('Email verification token set', { email });
+    } catch (error) {
+      logger.error('Error setting email verification token', { email, error: error.message });
+      throw error;
+    }
+  }
+
+  async verifyEmailToken(token) {
+    try {
+      // Scan for user with this verification token (not optimal but works for small scale)
+      const response = await this.docClient.send(new ScanCommand({
+        TableName: this.tables.users,
+        FilterExpression: 'emailVerificationToken = :token AND emailVerificationExpires > :now',
+        ExpressionAttributeValues: {
+          ':token': token,
+          ':now': new Date().toISOString()
+        }
+      }));
+
+      if (!response.Items || response.Items.length === 0) {
+        return null; // Invalid or expired token
+      }
+
+      const user = response.Items[0];
+      
+      // Mark email as verified and clear token
+      await this.docClient.send(new UpdateCommand({
+        TableName: this.tables.users,
+        Key: {
+          PK: user.PK,
+          SK: user.SK
+        },
+        UpdateExpression: 'SET emailVerified = :verified REMOVE emailVerificationToken, emailVerificationExpires',
+        ExpressionAttributeValues: {
+          ':verified': true
+        }
+      }));
+
+      logger.info('Email verified successfully', { email: user.email });
+      return this.formatUser(user);
+    } catch (error) {
+      logger.error('Error verifying email token', { token, error: error.message });
+      throw error;
+    }
+  }
+
+  async resendVerificationEmail(email) {
+    try {
+      const user = await this.getUserByEmail(email);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      if (user.emailVerified) {
+        throw new Error('Email already verified');
+      }
+
+      return user;
+    } catch (error) {
+      logger.error('Error checking user for resend verification', { email, error: error.message });
+      throw error;
+    }
   }
 }
 

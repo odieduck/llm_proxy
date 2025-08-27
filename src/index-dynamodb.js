@@ -76,12 +76,17 @@ app.use(express.static('public'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Session configuration for passport
+// Session configuration for passport with configurable inactivity timeout
+const sessionTimeoutHours = parseInt(process.env.SESSION_TIMEOUT_HOURS) || 5;
 app.use(session({
   secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: sessionTimeoutHours * 60 * 60 * 1000, // Configurable hours in milliseconds
+    rolling: true // Reset expiration on each request (inactivity timeout)
+  }
 }));
 
 // Passport middleware
@@ -130,7 +135,8 @@ app.listen(PORT, () => {
     NODE_ENV: process.env.NODE_ENV,
     JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
     SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'MISSING',
-    AWS_REGION: process.env.AWS_REGION
+    AWS_REGION: process.env.AWS_REGION,
+    SESSION_TIMEOUT_HOURS: sessionTimeoutHours
   });
 });
 
