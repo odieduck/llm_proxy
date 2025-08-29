@@ -161,16 +161,6 @@
             border-left: 4px solid #2196f3;
         }
         
-        .email-verified {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .email-unverified {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
         .hidden {
             display: none !important;
         }
@@ -202,24 +192,38 @@
         
         <div class="content">
             <div class="tab-buttons">
-                <button class="tab-button active" data-tab="register">Register</button>
-                <button class="tab-button" data-tab="login">Login</button>
-                <button class="tab-button" data-tab="api">API Test</button>
+                <button class="tab-button active" data-tab="login">Login</button>
+                <button class="tab-button" data-tab="register">Register</button>
                 <button class="tab-button" data-tab="receipt">Receipt Parser</button>
-                <button class="tab-button" data-tab="subscription">Subscription</button>
             </div>
 
             <!-- User Info (shown when logged in) -->
             <div id="user-info" class="user-info hidden">
                 <strong>Logged in as:</strong> <span id="user-email"></span><br>
-                <strong>Status:</strong> <span id="user-email-status"></span><br>
+                <strong>Status:</strong> <span id="user-status">Active</span><br>
                 <strong>Plan:</strong> <span id="user-plan"></span><br>
-                <strong>Usage:</strong> <span id="user-usage"></span><br>
                 <button id="logout-btn" style="width: auto; margin-top: 10px;">Logout</button>
             </div>
 
+            <!-- Login Tab -->
+            <div id="login-tab" class="tab-content active">
+                <h2>Sign In</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" value="testreceipt@finbrightai.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" value="testpass123" required>
+                    </div>
+                    <button type="submit" id="login-btn">Sign In</button>
+                </form>
+                <div id="login-result" class="result hidden"></div>
+            </div>
+
             <!-- Register Tab -->
-            <div id="register-tab" class="tab-content active">
+            <div id="register-tab" class="tab-content">
                 <h2>Create Account</h2>
                 <form id="register-form">
                     <div class="two-column">
@@ -239,92 +243,6 @@
                     <button type="submit" id="register-btn">Create Account</button>
                 </form>
                 <div id="register-result" class="result hidden"></div>
-            </div>
-
-            <!-- Login Tab -->
-            <div id="login-tab" class="tab-content">
-                <h2>Sign In</h2>
-                <form id="login-form">
-                    <div class="form-group">
-                        <label for="login-email">Email</label>
-                        <input type="email" id="login-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password">Password</label>
-                        <input type="password" id="login-password" required>
-                    </div>
-                    <button type="submit" id="login-btn">Sign In</button>
-                </form>
-                <div id="login-result" class="result hidden"></div>
-            </div>
-
-            <!-- API Test Tab -->
-            <div id="api-tab" class="tab-content">
-                <h2>Test LLM API</h2>
-                <div style="margin-bottom: 15px;">
-                    <button id="test-connection-btn" style="width: auto; margin-right: 10px;">🔍 Test API Connection</button>
-                    <button id="test-model-info-btn" style="width: auto;">📋 Model Information</button>
-                </div>
-                <div class="form-group">
-                    <label for="model">OpenAI Model</label>
-                    <select id="model">
-                        <optgroup label="GPT-5 (Latest Generation)">
-                            <option value="gpt-5">GPT-5 (Flagship)</option>
-                            <option value="gpt-5-mini">GPT-5 Mini (Efficient)</option>
-                            <option value="gpt-5-nano">GPT-5 Nano (Ultra-fast)</option>
-                        </optgroup>
-                        <optgroup label="GPT-4o (Previous Generation)">
-                            <option value="gpt-4o">GPT-4o</option>
-                            <option value="gpt-4o-mini">GPT-4o Mini</option>
-                        </optgroup>
-                        <optgroup label="GPT-4 (Legacy)">
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-4">GPT-4</option>
-                        </optgroup>
-                        <optgroup label="Reasoning Models">
-                            <option value="o3-mini">O3 Mini (Latest)</option>
-                            <option value="o1-preview">O1 Preview</option>
-                            <option value="o1-mini">O1 Mini</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="prompt">Prompt</label>
-                    <textarea id="prompt" rows="4" placeholder="Enter your prompt here..."></textarea>
-                </div>
-                <div class="two-column">
-                    <div class="form-group">
-                        <label for="max-tokens">Max Tokens</label>
-                        <input type="number" id="max-tokens" value="150" min="1" max="4000">
-                    </div>
-                    <div class="form-group">
-                        <label for="temperature">Temperature</label>
-                        <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="instructions">Instructions (System Message)</label>
-                    <textarea id="instructions" rows="2" placeholder="Optional system instructions for GPT-5 models..."></textarea>
-                </div>
-                <details style="margin-bottom: 15px;">
-                    <summary style="cursor: pointer; padding: 8px; background: #f0f0f0; border-radius: 4px;">🔧 Advanced Options (GPT-5 Response API)</summary>
-                    <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
-                        <div class="form-group">
-                            <label for="response-format">Response Format</label>
-                            <select id="response-format">
-                                <option value="">Auto (Default)</option>
-                                <option value="text">Plain Text</option>
-                                <option value="json_object">JSON Object</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="safety-identifier">Safety Identifier</label>
-                            <input type="text" id="safety-identifier" placeholder="Optional user identifier for safety">
-                        </div>
-                    </div>
-                </details>
-                <button id="api-btn">Send Request</button>
-                <div id="api-result" class="result hidden"></div>
             </div>
 
             <!-- Receipt Parser Tab -->
@@ -353,20 +271,6 @@
                     <textarea id="receipt-instructions" rows="2" placeholder="Any specific information you want extracted or special formatting requirements..."></textarea>
                 </div>
                 
-                <details style="margin-bottom: 15px;">
-                    <summary style="cursor: pointer; padding: 8px; background: #f0f0f0; border-radius: 4px;">📋 What Information Will Be Extracted</summary>
-                    <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; font-size: 0.9rem;">
-                        <ul style="margin-left: 20px;">
-                            <li><strong>Store Information:</strong> Name, address, phone number</li>
-                            <li><strong>Transaction Details:</strong> Date, time, transaction ID</li>
-                            <li><strong>Items:</strong> Names, quantities, prices, discounts</li>
-                            <li><strong>Payment:</strong> Subtotal, tax, total, payment method</li>
-                            <li><strong>Additional:</strong> Loyalty programs, return policy, coupons</li>
-                        </ul>
-                        <p style="margin-top: 10px; font-style: italic;">Results are formatted as structured JSON for easy processing.</p>
-                    </div>
-                </details>
-                
                 <button id="parse-receipt-btn">🔍 Parse Receipt</button>
                 <div id="receipt-result" class="result hidden"></div>
                 
@@ -375,65 +279,68 @@
                     <img id="preview-img" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px;" />
                 </div>
             </div>
-
-            <!-- Subscription Tab -->
-            <div id="subscription-tab" class="tab-content">
-                <h2>Subscription & Usage</h2>
-                <button id="refresh-subscription-btn">Refresh Subscription Status</button>
-                <div id="subscription-result" class="result hidden"></div>
-                
-                <h3 style="margin-top: 30px;">Available Plans</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 15px;">
-                    <div style="border: 2px solid #ddd; padding: 15px; border-radius: 6px;">
-                        <h4>Free</h4>
-                        <p>100 requests/month<br>10,000 tokens</p>
-                    </div>
-                    <div style="border: 2px solid #667eea; padding: 15px; border-radius: 6px;">
-                        <h4>Pro</h4>
-                        <p>1,000 requests/month<br>100,000 tokens</p>
-                    </div>
-                    <div style="border: 2px solid #28a745; padding: 15px; border-radius: 6px;">
-                        <h4>Enterprise</h4>
-                        <p>Unlimited requests<br>Unlimited tokens</p>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <script>
-        // API Configuration - update this if your domain changes
-        const API_BASE = window.location.origin; // Use same domain as the page
-        // Alternative: const API_BASE = 'https://api.finbrightai.com';
-        let currentToken = localStorage.getItem('jwt_token');
-        let currentUser = JSON.parse(localStorage.getItem('user_data') || '{}');
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            if (currentToken) {
-                showUserInfo();
+        // Clean, simple state management
+        class AppState {
+            constructor() {
+                this.token = localStorage.getItem('jwt_token');
+                this.user = this.getUserFromStorage();
+                this.apiBase = window.location.origin;
             }
-            
-            // Add event listeners
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    showTab(this.dataset.tab);
-                });
-            });
-            
-            document.getElementById('logout-btn').addEventListener('click', logout);
-            document.getElementById('register-form').addEventListener('submit', register);
-            document.getElementById('login-form').addEventListener('submit', login);
-            document.getElementById('test-connection-btn').addEventListener('click', testConnection);
-            document.getElementById('test-model-info-btn').addEventListener('click', testModelInfo);
-            document.getElementById('api-btn').addEventListener('click', testAPI);
-            document.getElementById('parse-receipt-btn').addEventListener('click', parseReceipt);
-            document.getElementById('receipt-image').addEventListener('change', previewImage);
-            document.getElementById('refresh-subscription-btn').addEventListener('click', getSubscription);
-        });
 
+            getUserFromStorage() {
+                try {
+                    const userData = localStorage.getItem('user_data');
+                    return userData ? JSON.parse(userData) : null;
+                } catch {
+                    return null;
+                }
+            }
+
+            setAuth(token, user) {
+                this.token = token;
+                this.user = user;
+                localStorage.setItem('jwt_token', token);
+                localStorage.setItem('user_data', JSON.stringify(user));
+            }
+
+            clearAuth() {
+                this.token = null;
+                this.user = null;
+                localStorage.removeItem('jwt_token');
+                localStorage.removeItem('user_data');
+            }
+
+            isLoggedIn() {
+                return !!this.token;
+            }
+        }
+
+        // Create global app state
+        const app = new AppState();
+
+        // DOM utility functions
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function showResult(elementId, message, isSuccess = true) {
+            const element = $(elementId);
+            element.textContent = message;
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+            element.classList.remove('hidden');
+        }
+
+        function hideResult(elementId) {
+            $(elementId).classList.add('hidden');
+        }
+
+        // Tab management
         function showTab(tabName) {
-            // Hide all tabs
+            // Hide all tabs and remove active buttons
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -441,473 +348,136 @@
                 btn.classList.remove('active');
             });
             
-            // Show selected tab
-            document.getElementById(tabName + '-tab').classList.add('active');
+            // Show selected tab and activate button
+            $(tabName + '-tab').classList.add('active');
             document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         }
 
-        function showResult(elementId, message, isSuccess = true) {
-            const resultEl = document.getElementById(elementId);
-            resultEl.textContent = typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
-            resultEl.className = `result ${isSuccess ? 'success' : 'error'}`;
-            resultEl.classList.remove('hidden');
-        }
-
-        function showUserInfo() {
-            if (currentToken && currentUser.email) {
-                document.getElementById('user-info').classList.remove('hidden');
-                document.getElementById('user-email').textContent = currentUser.email;
-                document.getElementById('user-plan').textContent = currentUser.subscription?.plan || 'Unknown';
-                document.getElementById('user-usage').textContent = 
-                    `${currentUser.subscription?.usage?.requests?.current || 0}/${currentUser.subscription?.usage?.requests?.limit || 0} requests`;
-                
-                // Show email verification status
-                const emailStatus = document.getElementById('user-email-status');
-                if (currentUser.emailVerified) {
-                    emailStatus.innerHTML = '✅ Email Verified';
-                    emailStatus.className = 'email-verified';
-                } else {
-                    emailStatus.innerHTML = '⚠️ Email Not Verified - <button onclick="resendVerificationEmail(\'' + currentUser.email + '\')" style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verify Now</button>';
-                    emailStatus.className = 'email-unverified';
-                }
+        // User interface updates
+        function updateUI() {
+            const userInfo = $('user-info');
+            if (app.isLoggedIn()) {
+                $('user-email').textContent = app.user.email || 'Unknown';
+                $('user-plan').textContent = app.user.subscription?.plan || 'Unknown';
+                userInfo.classList.remove('hidden');
+            } else {
+                userInfo.classList.add('hidden');
             }
         }
 
-        function logout() {
-            localStorage.removeItem('jwt_token');
-            localStorage.removeItem('user_data');
-            currentToken = null;
-            currentUser = {};
-            document.getElementById('user-info').classList.add('hidden');
-            showTab('login');
+        // API request helper
+        async function apiRequest(endpoint, options = {}) {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+
+            if (app.token && !config.headers.Authorization) {
+                config.headers.Authorization = `Bearer ${app.token}`;
+            }
+
+            const response = await fetch(`${app.apiBase}${endpoint}`, config);
+            const data = await response.json();
+            
+            return { response, data };
+        }
+
+        // Authentication functions
+        async function login(event) {
+            event.preventDefault();
+            const btn = $('login-btn');
+            const email = $('login-email').value;
+            const password = $('login-password').value;
+            
+            btn.disabled = true;
+            btn.textContent = 'Signing In...';
+            hideResult('login-result');
+
+            try {
+                const { response, data } = await apiRequest('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    app.setAuth(data.token, data.user);
+                    updateUI();
+                    showResult('login-result', 
+                        `✅ Welcome back ${data.user.username || data.user.email}!\nPlan: ${data.user.subscription?.plan}\nYou can now use the Receipt Parser!`, 
+                        true
+                    );
+                    // Auto-switch to receipt parser after successful login
+                    setTimeout(() => showTab('receipt'), 2000);
+                } else {
+                    showResult('login-result', `❌ Login failed: ${data.error || data.message}`, false);
+                }
+            } catch (error) {
+                showResult('login-result', `❌ Network error: ${error.message}`, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            }
         }
 
         async function register(event) {
             event.preventDefault();
-            const btn = document.getElementById('register-btn');
+            const btn = $('register-btn');
+            const email = $('reg-email').value;
+            const username = $('reg-username').value;
+            const password = $('reg-password').value;
+            
             btn.disabled = true;
             btn.textContent = 'Creating Account...';
-
-            const email = document.getElementById('reg-email').value;
-            const username = document.getElementById('reg-username').value;
-            const password = document.getElementById('reg-password').value;
+            hideResult('register-result');
 
             try {
-                console.log('Registering user:', { email, username });
-                
-                const response = await fetch(`${API_BASE}/auth/register`, {
+                const { response, data } = await apiRequest('/auth/register', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
                     body: JSON.stringify({ email, username, password })
                 });
 
-                console.log('Response status:', response.status);
-                const data = await response.json();
-                console.log('Response data:', data);
-                
                 if (response.ok) {
-                    currentToken = data.token;
-                    currentUser = data.user;
-                    localStorage.setItem('jwt_token', currentToken);
-                    localStorage.setItem('user_data', JSON.stringify(currentUser));
-                    
-                    let message = `✅ Account created successfully!\n\nWelcome ${data.user.username}!\nEmail: ${data.user.email}\nPlan: ${data.user.subscription.plan}`;
-                    
-                    if (data.emailVerificationRequired) {
-                        message += `\n\n📧 IMPORTANT: Please check your email to verify your account.\nLook in your inbox (and spam folder) for a verification link.`;
-                        
-                        // Add resend verification button
-                        setTimeout(() => {
-                            const resultDiv = document.getElementById('register-result');
-                            const resendBtn = document.createElement('button');
-                            resendBtn.innerHTML = '📧 Resend Verification Email';
-                            resendBtn.style.marginTop = '10px';
-                            resendBtn.onclick = () => resendVerificationEmail(data.user.email);
-                            resultDiv.appendChild(resendBtn);
-                        }, 100);
-                    }
-                    
-                    showResult('register-result', message, true);
-                    showUserInfo();
-                    
-                    // Clear form
-                    document.getElementById('reg-email').value = '';
-                    document.getElementById('reg-username').value = '';
-                    document.getElementById('reg-password').value = '';
-                } else {
-                    showResult('register-result', `❌ Registration failed:\n${data.error || data.message || 'Unknown error'}`, false);
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                showResult('register-result', `❌ Network error:\n${error.message}\n\nPlease check:\n- Internet connection\n- API server status\n- CORS configuration`, false);
-            }
-
-            btn.disabled = false;
-            btn.textContent = 'Create Account';
-        }
-
-        async function login(event) {
-            event.preventDefault();
-            const btn = document.getElementById('login-btn');
-            btn.disabled = true;
-            btn.textContent = 'Signing In...';
-
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                console.log('Logging in user:', email);
-                
-                const response = await fetch(`${API_BASE}/auth/login`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password })
-                });
-
-                console.log('Login response status:', response.status);
-                const data = await response.json();
-                console.log('Login response data:', data);
-                
-                if (response.ok) {
-                    currentToken = data.token;
-                    currentUser = data.user;
-                    localStorage.setItem('jwt_token', currentToken);
-                    localStorage.setItem('user_data', JSON.stringify(currentUser));
-                    
-                    showResult('login-result', `✅ Welcome back ${data.user.username}!\n\nPlan: ${data.user.subscription.plan}\nUsage: ${data.user.subscription.usage.requests.current}/${data.user.subscription.usage.requests.limit} requests\n\n⏰ Session expires after 5 hours of inactivity`, true);
-                    showUserInfo();
-                    
-                    // Clear form
-                    document.getElementById('login-email').value = '';
-                    document.getElementById('login-password').value = '';
-                    
-                    setTimeout(() => showTab('api'), 2000);
-                } else {
-                    showResult('login-result', `❌ Login failed:\n${data.error || data.message || 'Invalid credentials'}`, false);
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showResult('login-result', `❌ Network error:\n${error.message}`, false);
-            }
-
-            btn.disabled = false;
-            btn.textContent = 'Sign In';
-        }
-
-        async function updateModels() {
-            // Models are now hardcoded in HTML - no need to update dynamically
-            console.log('OpenAI models loaded');
-        }
-
-        async function testAPI() {
-            if (!currentToken) {
-                showResult('api-result', '❌ Please login first to use the API', false);
-                showTab('login');
-                return;
-            }
-
-            const btn = document.getElementById('api-btn');
-            btn.disabled = true;
-            btn.textContent = 'Sending Request...';
-
-            const prompt = document.getElementById('prompt').value;
-            if (!prompt.trim()) {
-                showResult('api-result', '❌ Please enter a prompt', false);
-                btn.disabled = false;
-                btn.textContent = 'Send Request';
-                return;
-            }
-
-            // Build request data with Response API parameters
-            const requestData = {
-                provider: 'openai',  // Always use OpenAI
-                model: document.getElementById('model').value,
-                prompt: prompt,
-                max_tokens: parseInt(document.getElementById('max-tokens').value),
-                temperature: parseFloat(document.getElementById('temperature').value)
-            };
-
-            // Add Response API specific parameters
-            const instructions = document.getElementById('instructions').value;
-            if (instructions.trim()) {
-                requestData.instructions = instructions;
-            }
-
-            const responseFormat = document.getElementById('response-format').value;
-            if (responseFormat) {
-                requestData.response_format = responseFormat;
-            }
-
-            const safetyIdentifier = document.getElementById('safety-identifier').value;
-            if (safetyIdentifier.trim()) {
-                requestData.safety_identifier = safetyIdentifier;
-            }
-
-            try {
-                console.log('Testing API with:', requestData);
-                console.log('Using token:', currentToken.substring(0, 20) + '...');
-                
-                const response = await fetch(`${API_BASE}/api`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${currentToken}`
-                    },
-                    body: JSON.stringify(requestData)
-                });
-
-                console.log('API response status:', response.status);
-                const data = await response.json();
-                console.log('API response data:', data);
-
-                if (response.ok) {
-                    const model = requestData.model;
-                    const apiType = model.startsWith('gpt-5') ? 'Response API' : 'Chat Completions API';
-                    
-                    let resultText = `✅ ${apiType} Request Successful!\n\n`;
-                    resultText += `Model: ${data.model}\n`;
-                    resultText += `API: ${data.api || 'unknown'}\n`;
-                    if (data.response_id) {
-                        resultText += `Response ID: ${data.response_id}\n`;
-                    }
-                    resultText += `\nResponse:\n${data.response || 'No response'}\n\n`;
-                    
-                    if (data.usage) {
-                        resultText += `Usage:\n`;
-                        if (data.usage.prompt_tokens) resultText += `  Prompt tokens: ${data.usage.prompt_tokens}\n`;
-                        if (data.usage.completion_tokens) resultText += `  Completion tokens: ${data.usage.completion_tokens}\n`;
-                        if (data.usage.total_tokens) resultText += `  Total tokens: ${data.usage.total_tokens}\n`;
-                    }
-                    
-                    showResult('api-result', resultText, true);
-                } else if (response.status === 401) {
-                    showResult('api-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
-                    logout();
-                } else if (response.status === 403 && data.error === 'Email verification required') {
-                    showResult('api-result', `📧 Email Verification Required\n\n${data.message}\n\nPlease verify your email address to use API features.\n\nClick the "Verify Now" button in your user info above.`, false);
-                } else {
-                    showResult('api-result', `❌ API Request Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
-                }
-            } catch (error) {
-                console.error('API test error:', error);
-                showResult('api-result', `❌ Network error:\n${error.message}`, false);
-            }
-
-            btn.disabled = false;
-            btn.textContent = 'Send Request';
-        }
-
-        async function getSubscription() {
-            if (!currentToken) {
-                showResult('subscription-result', '❌ Please login first to view subscription', false);
-                showTab('login');
-                return;
-            }
-
-            try {
-                console.log('Getting subscription status...');
-                
-                const response = await fetch(`${API_BASE}/subscription/status`, {
-                    headers: { 
-                        'Authorization': `Bearer ${currentToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                console.log('Subscription response status:', response.status);
-                const data = await response.json();
-                console.log('Subscription response data:', data);
-
-                if (response.ok) {
-                    showResult('subscription-result', `✅ Subscription Status:\n\n${JSON.stringify(data, null, 2)}`, true);
-                    
-                    if (data.data) {
-                        currentUser.subscription = data.data;
-                        localStorage.setItem('user_data', JSON.stringify(currentUser));
-                        showUserInfo();
-                    }
-                } else if (response.status === 401) {
-                    showResult('subscription-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
-                    logout();
-                } else {
-                    showResult('subscription-result', `❌ Failed to get subscription (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
-                }
-            } catch (error) {
-                console.error('Subscription error:', error);
-                showResult('subscription-result', `❌ Network error:\n${error.message}`, false);
-            }
-        }
-
-        async function testConnection() {
-            if (!currentToken) {
-                showResult('api-result', '❌ Please login first', false);
-                return;
-            }
-
-            try {
-                console.log('Testing API connection...');
-                
-                const response = await fetch(`${API_BASE}/api/providers`, {
-                    headers: { 
-                        'Authorization': `Bearer ${currentToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                console.log('Connection test response status:', response.status);
-                const data = await response.json();
-                console.log('Connection test response data:', data);
-
-                if (response.ok) {
-                    showResult('api-result', `✅ API Connection Successful!\n\nProvider: OpenAI\nToken is valid: ✅\nServer is responding: ✅`, true);
-                } else {
-                    showResult('api-result', `❌ API Connection Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
-                }
-            } catch (error) {
-                console.error('Connection test error:', error);
-                showResult('api-result', `❌ Connection test failed:\n${error.message}`, false);
-            }
-        }
-
-        async function testModelInfo() {
-            if (!currentToken) {
-                showResult('api-result', '❌ Please login first', false);
-                return;
-            }
-
-            try {
-                console.log('Getting model information...');
-                
-                const selectedModel = document.getElementById('model').value;
-                const response = await fetch(`${API_BASE}/api/model-info?model=${selectedModel}`, {
-                    headers: { 
-                        'Authorization': `Bearer ${currentToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                console.log('Model info response status:', response.status);
-                const data = await response.json();
-                console.log('Model info response data:', data);
-
-                if (response.ok) {
-                    const info = data.data;
-                    showResult('api-result', 
-                        `📋 Model Information: ${selectedModel}\n\n` +
-                        `API Endpoint: /v1/${info.endpoint}\n` +
-                        `Tier: ${info.tier}\n` +
-                        `Generation: ${info.generation}\n` +
-                        `Uses Response API: ${info.api === 'responses' ? 'Yes' : 'No'}\n\n` +
-                        `${info.api === 'responses' ? '✨ Using latest OpenAI Response API format' : '📝 Using Chat Completions API format'}`, 
+                    app.setAuth(data.token, data.user);
+                    updateUI();
+                    showResult('register-result', 
+                        `✅ Account created successfully!\nWelcome ${data.user.username}!\nYou can now use the Receipt Parser!`, 
                         true
                     );
+                    // Clear form
+                    $('reg-email').value = '';
+                    $('reg-username').value = '';  
+                    $('reg-password').value = '';
+                    // Auto-switch to receipt parser
+                    setTimeout(() => showTab('receipt'), 2000);
                 } else {
-                    showResult('api-result', `❌ Failed to get model info (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
+                    showResult('register-result', `❌ Registration failed: ${data.error || data.message}`, false);
                 }
             } catch (error) {
-                console.error('Model info error:', error);
-                showResult('api-result', `❌ Network error:\n${error.message}`, false);
+                showResult('register-result', `❌ Network error: ${error.message}`, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
             }
         }
 
-        // Email verification functions
-        async function resendVerificationEmail(email) {
-            try {
-                console.log('Resending verification email to:', email);
-                
-                const response = await fetch(`${API_BASE}/auth/resend-verification`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ email })
-                });
-
-                const data = await response.json();
-                console.log('Resend verification response:', data);
-                
-                if (response.ok) {
-                    showResult('register-result', `✅ Verification email sent!\n\nPlease check your inbox (and spam folder) for the verification link.`, true);
-                } else {
-                    showResult('register-result', `❌ Failed to resend verification email:\n${data.error}`, false);
-                }
-            } catch (error) {
-                console.error('Resend verification error:', error);
-                showResult('register-result', `❌ Network error:\n${error.message}`, false);
-            }
-        }
-
-        async function checkVerificationStatus(email) {
-            try {
-                const response = await fetch(`${API_BASE}/auth/verification-status?email=${encodeURIComponent(email)}`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    return data;
-                }
-                return null;
-            } catch (error) {
-                console.error('Check verification status error:', error);
-                return null;
-            }
-        }
-
-        // Handle email verification from URL
-        function handleEmailVerificationFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            
-            if (token) {
-                verifyEmailWithToken(token);
-            }
-        }
-
-        async function verifyEmailWithToken(token) {
-            try {
-                console.log('Verifying email with token:', token.substring(0, 10) + '...');
-                
-                const response = await fetch(`${API_BASE}/auth/verify-email?token=${token}`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    alert(`✅ ${data.message}`);
-                    
-                    // Update user data if logged in
-                    if (currentUser && currentUser.email === data.user.email) {
-                        currentUser.emailVerified = true;
-                        localStorage.setItem('user_data', JSON.stringify(currentUser));
-                        showUserInfo();
-                    }
-                    
-                    // Clear URL parameters
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else {
-                    alert(`❌ Verification failed: ${data.error}\n\n${data.message || 'Please try again.'}`);
-                }
-            } catch (error) {
-                console.error('Email verification error:', error);
-                alert(`❌ Network error during verification: ${error.message}`);
-            }
+        function logout() {
+            app.clearAuth();
+            updateUI();
+            showTab('login');
         }
 
         // Receipt parsing functions
         function previewImage() {
-            const fileInput = document.getElementById('receipt-image');
-            const previewDiv = document.getElementById('image-preview');
-            const previewImg = document.getElementById('preview-img');
+            const fileInput = $('receipt-image');
+            const previewDiv = $('image-preview');
+            const previewImg = $('preview-img');
             
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
                 
-                // Check file size (10MB limit)
                 if (file.size > 10 * 1024 * 1024) {
                     showResult('receipt-result', '❌ File size too large. Please select an image smaller than 10MB.', false);
                     fileInput.value = '';
@@ -927,14 +497,15 @@
         }
 
         async function parseReceipt() {
-            if (!currentToken) {
+            // Check authentication
+            if (!app.isLoggedIn()) {
                 showResult('receipt-result', '❌ Please login first to use the receipt parser', false);
                 showTab('login');
                 return;
             }
 
-            const fileInput = document.getElementById('receipt-image');
-            const btn = document.getElementById('parse-receipt-btn');
+            const fileInput = $('receipt-image');
+            const btn = $('parse-receipt-btn');
             
             if (!fileInput.files || !fileInput.files[0]) {
                 showResult('receipt-result', '❌ Please select a receipt image first', false);
@@ -943,73 +514,96 @@
 
             btn.disabled = true;
             btn.textContent = '🔄 Analyzing Receipt...';
+            hideResult('receipt-result');
 
             const formData = new FormData();
             formData.append('receipt', fileInput.files[0]);
-            formData.append('model', document.getElementById('receipt-model').value);
+            formData.append('model', $('receipt-model').value);
             
-            const customInstructions = document.getElementById('receipt-instructions').value;
+            const customInstructions = $('receipt-instructions').value;
             if (customInstructions.trim()) {
                 formData.append('instructions', customInstructions);
             }
 
             try {
-                console.log('Parsing receipt with model:', formData.get('model'));
-                console.log('File size:', fileInput.files[0].size, 'bytes');
+                console.log('🔍 Parsing receipt with token:', app.token ? 'Present' : 'Missing');
+                console.log('📸 File size:', fileInput.files[0].size, 'bytes');
                 
-                const response = await fetch(`${API_BASE}/api/parse-receipt`, {
+                const response = await fetch(`${app.apiBase}/api/parse-receipt`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${currentToken}`
-                        // Don't set Content-Type for FormData, let browser set it
+                        'Authorization': `Bearer ${app.token}`
+                        // Don't set Content-Type for FormData
                     },
                     body: formData
                 });
 
-                console.log('Receipt parsing response status:', response.status);
+                console.log('📡 Response status:', response.status);
                 const data = await response.json();
-                console.log('Receipt parsing response data:', data);
+                console.log('📋 Response data:', data);
 
-                if (response.ok) {
-                    const model = data.data.model;
-                    const apiType = data.data.api === 'responses' ? 'Response API' : 'Chat Completions API';
-                    
+                if (response.ok && data.success) {
+                    const result = data.data;
                     let resultText = `✅ Receipt Parsed Successfully!\n\n`;
-                    resultText += `📱 Model: ${model} (${apiType})\n`;
-                    resultText += `📸 Image: ${data.data.imageType} (${(data.data.imageSize / 1024).toFixed(1)} KB)\n`;
-                    if (data.data.response_id) {
-                        resultText += `🆔 Response ID: ${data.data.response_id}\n`;
+                    resultText += `📱 Model: ${result.model} (${result.api})\n`;
+                    resultText += `📸 Image: ${result.imageType} (${(result.imageSize / 1024).toFixed(1)} KB)\n`;
+                    if (result.response_id) {
+                        resultText += `🆔 Response ID: ${result.response_id}\n`;
                     }
-                    resultText += `\n🧾 Extracted Information:\n${data.data.response}\n\n`;
+                    resultText += `\n🧾 Extracted Information:\n${result.response}\n`;
                     
-                    if (data.data.usage) {
-                        resultText += `📊 Token Usage:\n`;
-                        if (data.data.usage.prompt_tokens) resultText += `  Input: ${data.data.usage.prompt_tokens} tokens\n`;
-                        if (data.data.usage.completion_tokens) resultText += `  Output: ${data.data.usage.completion_tokens} tokens\n`;
-                        if (data.data.usage.total_tokens) resultText += `  Total: ${data.data.usage.total_tokens} tokens\n`;
+                    if (result.usage) {
+                        resultText += `\n📊 Token Usage:\n`;
+                        if (result.usage.prompt_tokens) resultText += `  Input: ${result.usage.prompt_tokens} tokens\n`;
+                        if (result.usage.completion_tokens) resultText += `  Output: ${result.usage.completion_tokens} tokens\n`;
+                        if (result.usage.total_tokens) resultText += `  Total: ${result.usage.total_tokens} tokens\n`;
                     }
                     
                     showResult('receipt-result', resultText, true);
                 } else if (response.status === 401) {
-                    showResult('receipt-result', `❌ Authentication failed. Please login again.\n\n${JSON.stringify(data, null, 2)}`, false);
-                    logout();
-                } else if (response.status === 403 && data.error === 'Email verification required') {
-                    showResult('receipt-result', `📧 Email Verification Required\n\n${data.message}\n\nPlease verify your email address to use the receipt parser.\n\nClick the "Verify Now" button in your user info above.`, false);
+                    showResult('receipt-result', `❌ Authentication failed. Please login again.\n\nError: ${data.error}`, false);
+                    app.clearAuth();
+                    updateUI();
+                    showTab('login');
                 } else {
                     showResult('receipt-result', `❌ Receipt Parsing Failed (${response.status}):\n\n${JSON.stringify(data, null, 2)}`, false);
                 }
             } catch (error) {
-                console.error('Receipt parsing error:', error);
-                showResult('receipt-result', `❌ Network error:\n${error.message}`, false);
+                console.error('❌ Receipt parsing error:', error);
+                showResult('receipt-result', `❌ Network error: ${error.message}`, false);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Parse Receipt';
             }
-
-            btn.disabled = false;
-            btn.textContent = '🔍 Parse Receipt';
         }
 
-        // Initialize models on page load and handle verification
-        updateModels();
-        handleEmailVerificationFromURL();
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 App initialized');
+            console.log('🔑 Token present:', !!app.token);
+            console.log('👤 User data:', !!app.user);
+
+            // Update UI based on current state
+            updateUI();
+
+            // Add event listeners
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    showTab(this.dataset.tab);
+                });
+            });
+
+            $('login-form').addEventListener('submit', login);
+            $('register-form').addEventListener('submit', register);
+            $('logout-btn').addEventListener('click', logout);
+            $('parse-receipt-btn').addEventListener('click', parseReceipt);
+            $('receipt-image').addEventListener('change', previewImage);
+
+            // If logged in, show receipt tab by default
+            if (app.isLoggedIn()) {
+                showTab('receipt');
+            }
+        });
     </script>
 </body>
 </html>
