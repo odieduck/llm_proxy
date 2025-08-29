@@ -31,7 +31,7 @@ run:
     # OpenAI API Key - Set from environment or replace with actual key
     - name: OPENAI_API_KEY
       value: "your-openai-api-key-here"
-    # Email verification settings
+    # Email verification settings - Disabled for testing
     - name: EMAIL_SERVICE_ENABLED
       value: "false"
     - name: FROM_EMAIL
@@ -39,4 +39,4 @@ run:
     - name: BASE_URL
       value: "https://api.finbrightai.com"
     - name: REQUIRE_EMAIL_VERIFICATION
-      value: "true"
+      value: "false"
