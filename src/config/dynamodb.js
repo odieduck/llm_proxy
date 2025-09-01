@@ -210,7 +210,10 @@ class DynamoDBService {
             PK: `USER#${user.email}`,
             SK: 'PROFILE'
           },
-          UpdateExpression: 'SET subscription.usage.requests.current = :zero, subscription.usage.tokens.current = :zero, subscription.usage.resetDate = :resetDate',
+          UpdateExpression: 'SET subscription.#usage.requests.current = :zero, subscription.#usage.tokens.current = :zero, subscription.#usage.resetDate = :resetDate',
+          ExpressionAttributeNames: {
+            '#usage': 'usage'
+          },
           ExpressionAttributeValues: {
             ':zero': 0,
             ':resetDate': this.getNextMonthDate()
@@ -225,7 +228,10 @@ class DynamoDBService {
           PK: `USER#${user.email}`,
           SK: 'PROFILE'
         },
-        UpdateExpression: 'ADD subscription.usage.requests.current :reqInc, subscription.usage.tokens.current :tokInc',
+        UpdateExpression: 'ADD subscription.#usage.requests.current :reqInc, subscription.#usage.tokens.current :tokInc',
+        ExpressionAttributeNames: {
+          '#usage': 'usage'
+        },
         ExpressionAttributeValues: {
           ':reqInc': 1,
           ':tokInc': tokensUsed

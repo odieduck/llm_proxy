@@ -237,8 +237,7 @@ Please format the response as a clear, structured JSON object.`;
     // Prepare the request for GPT-5 Vision
     const options = {
       max_tokens: 2000,
-      temperature: 0.1, // Lower temperature for more accurate parsing
-      instructions: req.body.instructions || "You are a receipt parsing assistant. Extract information accurately and format it as JSON."
+      temperature: 0.1 // Lower temperature for more accurate parsing
     };
 
     logger.info('Receipt parsing request', {
