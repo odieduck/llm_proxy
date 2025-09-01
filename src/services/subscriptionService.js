@@ -1,5 +1,5 @@
 const Stripe = require('stripe');
-const User = require('../models/User');
+const dynamoDBService = require('../config/dynamodb');
 const { logger } = require('../utils/logger');
 
 class SubscriptionService {
@@ -44,7 +44,7 @@ class SubscriptionService {
     }
 
     try {
-      const user = await User.findById(userId);
+      const user = await dynamoDBService.getUserById(userId);
       if (!user) {
         throw new Error('User not found');
       }
@@ -57,7 +57,6 @@ class SubscriptionService {
           metadata: { userId: userId.toString() }
         });
         customerId = customer.id;
-        user.subscription.stripeCustomerId = customerId;
       }
 
       const subscription = await this.stripe.subscriptions.create({
@@ -66,7 +65,7 @@ class SubscriptionService {
         metadata: { userId: userId.toString(), plan: planName }
       });
 
-      user.subscription = {
+      const updatedSubscription = {
         ...user.subscription,
         plan: planName,
         status: 'active',
@@ -77,14 +76,14 @@ class SubscriptionService {
         usage: {
           requests: { current: 0, limit: plan.requests },
           tokens: { current: 0, limit: plan.tokens },
-          resetDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+          resetDate: dynamoDBService.getNextMonthDate()
         }
       };
 
-      await user.save();
+      const updatedUser = await dynamoDBService.updateUserSubscription(userId, updatedSubscription);
       logger.info('Subscription created', { userId, plan: planName, subscriptionId: subscription.id });
       
-      return { subscription, user };
+      return { subscription, user: updatedUser };
     } catch (error) {
       logger.error('Subscription creation error:', error);
       throw error;
@@ -97,7 +96,7 @@ class SubscriptionService {
     }
 
     try {
-      const user = await User.findById(userId);
+      const user = await dynamoDBService.getUserById(userId);
       if (!user || !user.subscription.stripeSubscriptionId) {
         throw new Error('No active subscription found');
       }
@@ -106,11 +105,15 @@ class SubscriptionService {
         cancel_at_period_end: true
       });
 
-      user.subscription.status = 'cancelled';
-      await user.save();
+      const updatedSubscription = {
+        ...user.subscription,
+        status: 'cancelled'
+      };
+      
+      const updatedUser = await dynamoDBService.updateUserSubscription(userId, updatedSubscription);
 
       logger.info('Subscription cancelled', { userId, subscriptionId: user.subscription.stripeSubscriptionId });
-      return user;
+      return updatedUser;
     } catch (error) {
       logger.error('Subscription cancellation error:', error);
       throw error;
@@ -143,14 +146,14 @@ class SubscriptionService {
 
   async handleSubscriptionChange(subscription) {
     const userId = subscription.metadata.userId;
-    const user = await User.findById(userId);
+    const user = await dynamoDBService.getUserById(userId);
     
     if (!user) return;
 
     const plan = subscription.metadata.plan || 'free';
     const planConfig = this.plans[plan];
     
-    user.subscription = {
+    const updatedSubscription = {
       ...user.subscription,
       plan: plan,
       status: subscription.status === 'active' ? 'active' : 'inactive',
@@ -162,18 +165,21 @@ class SubscriptionService {
       }
     };
 
-    await user.save();
+    await dynamoDBService.updateUserSubscription(userId, updatedSubscription);
     logger.info('Subscription updated via webhook', { userId, status: subscription.status });
   }
 
   async handlePaymentSuccess(invoice) {
     const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
     const userId = subscription.metadata.userId;
-    const user = await User.findById(userId);
+    const user = await dynamoDBService.getUserById(userId);
     
     if (user) {
-      user.subscription.status = 'active';
-      await user.save();
+      const updatedSubscription = {
+        ...user.subscription,
+        status: 'active'
+      };
+      await dynamoDBService.updateUserSubscription(userId, updatedSubscription);
       logger.info('Payment succeeded', { userId, invoiceId: invoice.id });
     }
   }
@@ -181,11 +187,14 @@ class SubscriptionService {
   async handlePaymentFailed(invoice) {
     const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
     const userId = subscription.metadata.userId;
-    const user = await User.findById(userId);
+    const user = await dynamoDBService.getUserById(userId);
     
     if (user) {
-      user.subscription.status = 'past_due';
-      await user.save();
+      const updatedSubscription = {
+        ...user.subscription,
+        status: 'past_due'
+      };
+      await dynamoDBService.updateUserSubscription(userId, updatedSubscription);
       logger.warn('Payment failed', { userId, invoiceId: invoice.id });
     }
   }
@@ -195,7 +204,7 @@ class SubscriptionService {
   }
 
   async getUserUsage(userId) {
-    const user = await User.findById(userId);
+    const user = await dynamoDBService.getUserById(userId);
     if (!user) {
       throw new Error('User not found');
     }

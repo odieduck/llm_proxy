@@ -1,18 +1,9 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const { authenticateToken } = require('../middleware/auth');
+const dynamoDBService = require('../config/dynamodb');
 const iosSubscriptionService = require('../services/iosSubscriptionService');
 const { logger } = require('../utils/logger');
 const Joi = require('joi');
-
-// Use mock user service if MongoDB is not connected
-let User;
-let mockUserService;
-if (mongoose.connection.readyState === 0) {
-  mockUserService = require('../services/mockUserService');
-} else {
-  User = require('../models/User');
-}
 
 const router = express.Router();
 
@@ -36,12 +27,10 @@ router.post('/validate-receipt', authenticateToken, async (req, res, next) => {
 
     const subscriptionResult = await iosSubscriptionService.processSubscription(userId, receiptData);
     
-    // Update the last receipt data for future server-to-server notifications
-    const user = await User.findById(userId);
-    if (user && user.subscription.iosReceiptData) {
-      user.subscription.iosReceiptData.lastReceiptData = receiptData;
-      user.subscription.iosReceiptData.lastValidationDate = new Date();
-      await user.save();
+    // Get updated user data
+    const user = await dynamoDBService.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     res.json({
@@ -50,7 +39,7 @@ router.post('/validate-receipt', authenticateToken, async (req, res, next) => {
       data: {
         subscription: subscriptionResult,
         user: {
-          id: user._id,
+          id: user.userId,
           subscription: user.subscription
         }
       }
@@ -70,12 +59,7 @@ router.get('/status', authenticateToken, async (req, res, next) => {
   try {
     const userId = req.user.userId;
     
-    let user;
-    if (mockUserService) {
-      user = await mockUserService.findById(userId);
-    } else {
-      user = await User.findById(userId);
-    }
+    const user = await dynamoDBService.getUserById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -87,9 +71,9 @@ router.get('/status', authenticateToken, async (req, res, next) => {
     let needsReceiptRefresh = false;
     if (isIOSSubscription && subscription.iosReceiptData) {
       // Check if we need to refresh the receipt (last validation > 24 hours ago)
-      const lastValidation = subscription.iosReceiptData.lastValidationDate;
+      const lastValidation = new Date(subscription.iosReceiptData.lastValidationDate);
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      needsReceiptRefresh = !lastValidation || lastValidation < oneDayAgo;
+      needsReceiptRefresh = !subscription.iosReceiptData.lastValidationDate || lastValidation < oneDayAgo;
     }
 
     res.json({

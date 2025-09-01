@@ -5,12 +5,12 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const passport = require('./config/passport');
-const { connectDB } = require('./config/database');
 const { logger } = require('./utils/logger');
-const authRoutes = require('./routes/auth');
+const authRoutes = require('./routes/auth-dynamodb');
 const proxyRoutes = require('./routes/proxy');
 const subscriptionRoutes = require('./routes/subscription');
 const iosSubscriptionRoutes = require('./routes/iosSubscription');
+const debugRoutes = require('./routes/debug');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -25,12 +25,34 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', false);
 }
 
-// Connect to database
-connectDB();
+// Initialize DynamoDB connection test
+(async () => {
+  try {
+    const dynamoDBService = require('./config/dynamodb');
+    logger.info('DynamoDB service ready for AWS deployment');
+  } catch (error) {
+    logger.error('DynamoDB initialization error:', error);
+  }
+})();
 
-// Security middleware
-app.use(helmet());
-app.use(cors());
+// Security middleware with relaxed CSP for our web interface
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
+app.use(cors({
+  origin: true, // Allow all origins for now
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Rate limiting with proxy awareness
 const limiter = rateLimit({
@@ -47,16 +69,24 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Static files
+app.use(express.static('public'));
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Session configuration for passport
+// Session configuration for passport with configurable inactivity timeout
+const sessionTimeoutHours = parseInt(process.env.SESSION_TIMEOUT_HOURS) || 5;
 app.use(session({
   secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: sessionTimeoutHours * 60 * 60 * 1000, // Configurable hours in milliseconds
+    rolling: true // Reset expiration on each request (inactivity timeout)
+  }
 }));
 
 // Passport middleware
@@ -68,10 +98,16 @@ app.use('/auth', authRoutes);
 app.use('/api', proxyRoutes);
 app.use('/subscription', subscriptionRoutes);
 app.use('/ios', iosSubscriptionRoutes);
+app.use('/debug', debugRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    database: 'DynamoDB',
+    region: process.env.AWS_REGION || 'us-east-1'
+  });
 });
 
 // Error handling
@@ -82,8 +118,26 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Startup error handling
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 app.listen(PORT, () => {
-  logger.info(`LLM Proxy Service running on port ${PORT}`);
+  logger.info(`LLM Proxy Service (DynamoDB) running on port ${PORT}`);
+  logger.info('Environment check:', {
+    NODE_ENV: process.env.NODE_ENV,
+    JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+    SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'MISSING',
+    AWS_REGION: process.env.AWS_REGION,
+    SESSION_TIMEOUT_HOURS: sessionTimeoutHours
+  });
 });
 
 module.exports = app;

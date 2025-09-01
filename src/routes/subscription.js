@@ -2,7 +2,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { checkSubscription } = require('../middleware/subscription');
 const subscriptionService = require('../services/subscriptionService');
-const User = require('../models/User');
+const dynamoDBService = require('../config/dynamodb');
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
@@ -19,13 +19,7 @@ router.get('/plans', (req, res) => {
 // Get user's current subscription status and usage
 router.get('/status', authenticateToken, async (req, res, next) => {
   try {
-    const user = await User.findOne({
-      $or: [
-        { username: req.user.username },
-        { email: req.user.email },
-        { _id: req.user.userId }
-      ]
-    });
+    const user = await dynamoDBService.getUserById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -50,13 +44,7 @@ router.post('/create', authenticateToken, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid plan selected' });
     }
 
-    const user = await User.findOne({
-      $or: [
-        { username: req.user.username },
-        { email: req.user.email },
-        { _id: req.user.userId }
-      ]
-    });
+    const user = await dynamoDBService.getUserById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -84,13 +72,7 @@ router.post('/create', authenticateToken, async (req, res, next) => {
 // Cancel subscription
 router.post('/cancel', authenticateToken, async (req, res, next) => {
   try {
-    const user = await User.findOne({
-      $or: [
-        { username: req.user.username },
-        { email: req.user.email },
-        { _id: req.user.userId }
-      ]
-    });
+    const user = await dynamoDBService.getUserById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -114,13 +96,7 @@ router.post('/cancel', authenticateToken, async (req, res, next) => {
 // Get usage statistics
 router.get('/usage', authenticateToken, async (req, res, next) => {
   try {
-    const user = await User.findOne({
-      $or: [
-        { username: req.user.username },
-        { email: req.user.email },
-        { _id: req.user.userId }
-      ]
-    });
+    const user = await dynamoDBService.getUserById(req.user.userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

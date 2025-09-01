@@ -2,12 +2,10 @@
   "name": "llm-proxy-service",
   "version": "1.0.0",
   "description": "LLM Provider Proxy Service with Authentication",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "start:dynamodb": "node src/index-dynamodb.js",
     "dev": "nodemon src/index.js",
-    "dev:dynamodb": "nodemon src/index-dynamodb.js",
     "test": "jest",
     "setup-dynamodb": "node scripts/create-dynamodb-tables.js"
   },
@@ -26,7 +24,6 @@
     "helmet": "^7.0.0",
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.18.0",
     "multer": "^2.0.2",
     "passport": "^0.6.0",
     "passport-apple": "^2.0.2",

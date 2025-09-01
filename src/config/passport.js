@@ -1,5 +1,5 @@
 const passport = require('passport');
-const User = require('../models/User');
+const dynamoDBService = require('./dynamodb');
 const { logger } = require('../utils/logger');
 
 // Only configure OAuth strategies if environment variables are present
@@ -12,28 +12,31 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     callbackURL: "/auth/google/callback"
   }, async (accessToken, refreshToken, profile, done) => {
   try {
-    let user = await User.findOne({
-      $or: [
-        { email: profile.emails[0].value },
-        { 'socialProviders.provider': 'google', 'socialProviders.providerId': profile.id }
-      ]
-    });
+    let user = await dynamoDBService.getUserByEmail(profile.emails[0].value);
 
     if (user) {
-      const googleProvider = user.socialProviders.find(p => p.provider === 'google');
+      // Check if Google provider is already linked
+      const googleProvider = user.socialProviders?.find(p => p.provider === 'google');
       if (!googleProvider) {
-        user.socialProviders.push({
+        // Add Google provider to existing user
+        const updatedProviders = [...(user.socialProviders || []), {
           provider: 'google',
           providerId: profile.id,
           email: profile.emails[0].value,
           name: profile.displayName,
           picture: profile.photos[0]?.value
+        }];
+        
+        await dynamoDBService.updateUserSubscription(user.userId, {
+          ...user.subscription,
+          socialProviders: updatedProviders
         });
-        await user.save();
       }
     } else {
-      user = new User({
+      // Create new user with Google provider
+      user = await dynamoDBService.createUser({
         email: profile.emails[0].value,
+        username: profile.displayName?.toLowerCase().replace(/\s+/g, '') || 'googleuser',
         socialProviders: [{
           provider: 'google',
           providerId: profile.id,
@@ -42,13 +45,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           picture: profile.photos[0]?.value
         }]
       });
-      await user.save();
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    await dynamoDBService.updateUserLogin(user.email);
     
-    logger.info('Google login successful', { userId: user._id, email: user.email });
+    logger.info('Google login successful', { userId: user.userId, email: user.email });
     return done(null, user);
   } catch (error) {
     logger.error('Google authentication error:', error);
@@ -73,27 +74,30 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPL
     const email = profile.email;
     const appleId = profile.sub;
     
-    let user = await User.findOne({
-      $or: [
-        { email: email },
-        { 'socialProviders.provider': 'apple', 'socialProviders.providerId': appleId }
-      ]
-    });
+    let user = await dynamoDBService.getUserByEmail(email);
 
     if (user) {
-      const appleProvider = user.socialProviders.find(p => p.provider === 'apple');
+      // Check if Apple provider is already linked
+      const appleProvider = user.socialProviders?.find(p => p.provider === 'apple');
       if (!appleProvider) {
-        user.socialProviders.push({
+        // Add Apple provider to existing user
+        const updatedProviders = [...(user.socialProviders || []), {
           provider: 'apple',
           providerId: appleId,
           email: email,
           name: profile.name?.firstName + ' ' + profile.name?.lastName || 'Apple User'
+        }];
+        
+        await dynamoDBService.updateUserSubscription(user.userId, {
+          ...user.subscription,
+          socialProviders: updatedProviders
         });
-        await user.save();
       }
     } else {
-      user = new User({
+      // Create new user with Apple provider
+      user = await dynamoDBService.createUser({
         email: email,
+        username: (profile.name?.firstName + profile.name?.lastName)?.toLowerCase().replace(/\s+/g, '') || 'appleuser',
         socialProviders: [{
           provider: 'apple',
           providerId: appleId,
@@ -101,13 +105,11 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPL
           name: profile.name?.firstName + ' ' + profile.name?.lastName || 'Apple User'
         }]
       });
-      await user.save();
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    await dynamoDBService.updateUserLogin(user.email);
     
-    logger.info('Apple login successful', { userId: user._id, email: user.email });
+    logger.info('Apple login successful', { userId: user.userId, email: user.email });
     return done(null, user);
   } catch (error) {
     logger.error('Apple authentication error:', error);
@@ -119,12 +121,12 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPL
 }
 
 passport.serializeUser((user, done) => {
-  done(null, user._id);
+  done(null, user.userId);
 });
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await User.findById(id);
+    const user = await dynamoDBService.getUserById(id);
     done(null, user);
   } catch (error) {
     done(error, null);

@@ -1,5 +1,5 @@
 const axios = require('axios');
-const User = require('../models/User');
+const dynamoDBService = require('../config/dynamodb');
 const { logger } = require('../utils/logger');
 
 class IOSSubscriptionService {
@@ -96,7 +96,7 @@ class IOSSubscriptionService {
   async processSubscription(userId, receiptData) {
     try {
       const receipt = await this.verifyReceipt(receiptData, userId);
-      const user = await User.findById(userId);
+      const user = await dynamoDBService.getUserById(userId);
       
       if (!user) {
         throw new Error('User not found');
@@ -167,7 +167,7 @@ class IOSSubscriptionService {
   async updateUserSubscription(user, plan, iosReceipt, expiresDate) {
     const planConfig = this.plans[plan];
     
-    user.subscription = {
+    const updatedSubscription = {
       plan: plan,
       status: expiresDate && expiresDate > new Date() ? 'active' : (plan === 'free' ? 'active' : 'expired'),
       platform: 'ios',
@@ -189,17 +189,17 @@ class IOSSubscriptionService {
           current: user.subscription?.usage?.tokens?.current || 0, 
           limit: planConfig.tokens 
         },
-        resetDate: user.subscription?.usage?.resetDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+        resetDate: user.subscription?.usage?.resetDate || dynamoDBService.getNextMonthDate()
       }
     };
 
-    await user.save();
-    return user;
+    const updatedUser = await dynamoDBService.updateUserSubscription(user.userId, updatedSubscription);
+    return updatedUser;
   }
 
   async refreshSubscriptionStatus(userId) {
     try {
-      const user = await User.findById(userId);
+      const user = await dynamoDBService.getUserById(userId);
       if (!user || !user.subscription?.iosReceiptData) {
         return null;
       }
